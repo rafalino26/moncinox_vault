@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'; // <-- TAMBAHKAN BARIS INI
+
 import TransactionForm from './components/TransactionForm';
 import TransactionList from './components/TransactionList';
 import StatCards from './components/StatCards';
