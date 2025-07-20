@@ -1,44 +1,65 @@
-import { getDashboardStats } from "../actions/transactionActions";
+'use client'; // <-- JADIKAN CLIENT COMPONENT
+
+import { useState, useEffect } from "react";
 import StatCard from "./StatCard";
-import { FiArrowUp, FiArrowDown, FiDollarSign, FiAlertTriangle } from 'react-icons/fi';
+import AddUangSakuModal from "./AddUangSakuModal";
+import { getWallets } from "@/app/actions/transactionActions";
+import { FiPlus, FiPocket } from 'react-icons/fi';
+import type { Wallet } from "@prisma/client";
 
-const formatRupiah = (amount: number) => `Rp${new Intl.NumberFormat('id-ID').format(amount)}`;
+const formatRupiah = (amount: number | null | undefined) => `Rp${new Intl.NumberFormat('id-ID').format(amount || 0)}`;
 
-export default async function StatCards() {
-    const { totalPemasukan, totalPengeluaran, arusKas, pengeluaranTerbesar } = await getDashboardStats();
+export default function StatCards() {
+    const [wallets, setWallets] = useState<{ rafaWallet: Wallet | null, monikWallet: Wallet | null }>({ rafaWallet: null, monikWallet: null });
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedPerson, setSelectedPerson] = useState<'Saya' | 'Pacar_Saya' | null>(null);
 
+    // Ambil data wallet saat komponen dimuat
+    useEffect(() => {
+        getWallets().then(data => setWallets(data));
+    }, []);
+
+    const handleCardClick = (person: 'Saya' | 'Pacar_Saya') => {
+        setSelectedPerson(person);
+        setIsModalOpen(true);
+    };
+    
     return (
-        <div className="mb-8">
-            <h2 className="text-xl font-bold text-slate-800 mb-4">Ringkasan Bulan Ini</h2>
-            {/* Grid yang responsif */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard 
-                    title="Total Pemasukan"
-                    value={formatRupiah(totalPemasukan)}
-                    Icon={FiArrowUp}
-                    color="bg-purple-500"
-                />
-                <StatCard 
-                    title="Total Pengeluaran"
-                    value={formatRupiah(totalPengeluaran)}
-                    Icon={FiArrowDown}
-                    color="bg-purple-500"
-                />
-                <StatCard 
-                    title="Arus Kas Bersih"
-                    value={formatRupiah(arusKas)}
-                    note={arusKas >= 0 ? "Bulan ini surplus!" : "Awas, bulan ini minus!"}
-                    Icon={FiDollarSign}
-                    color={arusKas >= 0 ? "bg-purple-500" : "bg-red-500"}
-                />
-                <StatCard 
-                    title="Pengeluaran Terbesar"
-                    value={pengeluaranTerbesar ? formatRupiah(pengeluaranTerbesar.jumlah) : 'Rp0'}
-                    note={pengeluaranTerbesar?.keterangan || 'Tidak ada pengeluaran'}
-                    Icon={FiAlertTriangle}
-                    color="bg-purple-500"
-                />
+        <>
+            <div className="mb-8">
+                <h2 className="text-xl font-bold text-slate-800 mb-4">Ringkasan Saat Ini</h2>
+                <div className="grid grid-cols-2 gap-4">
+                    {/* Kartu Sisa Uang Rafa */}
+                    <button onClick={() => handleCardClick('Saya')} className="text-left">
+                        <StatCard 
+                            title="Rafa"
+                            value={formatRupiah(wallets.rafaWallet?.balance)}
+                            Icon={FiPocket}
+                            color="bg-blue-500"
+                            ActionIcon={FiPlus}
+                        />
+                    </button>
+
+                    {/* Kartu Sisa Uang Monik */}
+                    <button onClick={() => handleCardClick('Pacar_Saya')} className="text-left">
+                        <StatCard 
+                            title="Monik"
+                            value={formatRupiah(wallets.monikWallet?.balance)}
+                            Icon={FiPocket}
+                            color="bg-pink-500"
+                            ActionIcon={FiPlus}
+                        />
+                    </button>
+                </div>
             </div>
-        </div>
+
+            {isModalOpen && selectedPerson && (
+                <AddUangSakuModal 
+                    person={selectedPerson}
+                    personName={selectedPerson === 'Saya' ? 'Rafa' : 'Monik'}
+                    onClose={() => setIsModalOpen(false)}
+                />
+            )}
+        </>
     );
 }

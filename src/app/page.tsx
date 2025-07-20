@@ -19,20 +19,20 @@ export default async function DashboardPage() {
 
     return (
         <div className="space-y-8">
-            <TransactionForm />
-
+            {/* --- POSISI BARU: STAT CARDS SEKARANG DI ATAS --- */}
             <Suspense fallback={<div className="text-center p-4">Memuat statistik...</div>}>
                 <StatCards />
             </Suspense>
 
-            {/* --- BUNGKUS GRAFIK DENGAN COLLAPSIBLE SECTION --- */}
+            {/* --- POSISI BARU: FORM SEKARANG DI BAWAH STAT CARDS --- */}
+            <TransactionForm />
+
             <CollapsibleSection title="Grafik & Tren">
                 <Suspense fallback={<div className="text-center p-4">Memuat grafik...</div>}>
                     <DashboardCharts />
                 </Suspense>
             </CollapsibleSection>
             
-            {/* --- BUNGKUS RIWAYAT TRANSAKSI DENGAN COLLAPSIBLE SECTION --- */}
             <CollapsibleSection title="Riwayat Transaksi Terbaru">
                 <Suspense fallback={<div className="text-center p-8">Memuat riwayat...</div>}>
                     <TransactionList transactions={allTransactions} />

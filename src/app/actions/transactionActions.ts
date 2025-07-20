@@ -3,6 +3,49 @@ import prisma from '../lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
+
+export async function getWallets() {
+    try {
+        const wallets = await prisma.wallet.findMany();
+        // Pastikan kedua dompet ada, jika tidak, buat baru.
+        let rafaWallet = wallets.find(w => w.person === 'Saya');
+        let monikWallet = wallets.find(w => w.person === 'Pacar_Saya');
+
+        if (!rafaWallet) {
+            rafaWallet = await prisma.wallet.create({ data: { person: 'Saya', balance: 0 } });
+        }
+        if (!monikWallet) {
+            monikWallet = await prisma.wallet.create({ data: { person: 'Pacar_Saya', balance: 0 } });
+        }
+        
+        return { rafaWallet, monikWallet };
+    } catch (error) {
+        return { rafaWallet: null, monikWallet: null };
+    }
+}
+
+// --- FUNGSI BARU UNTUK MENAMBAH UANG SAKU ---
+export async function addUangSaku(formData: FormData) {
+    const person = formData.get('person') as 'Saya' | 'Pacar_Saya';
+    const amount = Number(formData.get('amount'));
+
+    if (!person || !amount || amount <= 0) {
+        return { error: "Jumlah tidak valid." };
+    }
+
+    try {
+        await prisma.wallet.update({
+            where: { person: person },
+            data: { balance: { increment: amount } },
+        });
+        revalidatePath('/');
+        return { success: `Uang saku untuk ${person === 'Saya' ? 'Rafa' : 'Monik'} berhasil ditambahkan!` };
+    } catch (error) {
+        return { error: "Gagal memperbarui sisa uang." };
+    }
+}
+
+
 // ... (skema Zod dan fungsi addTransaction tetap sama)
 const TransactionSchema = z.object({
     keterangan: z.string().optional(),
@@ -13,39 +56,41 @@ const TransactionSchema = z.object({
 });
 
 
+
 export async function addTransaction(formData: FormData) {
     const validatedFields = TransactionSchema.safeParse(Object.fromEntries(formData.entries()));
-    if (!validatedFields.success) {
-        return { error: "Data tidak valid." };
-    }
+    if (!validatedFields.success) return { error: "Data tidak valid." };
 
-    // ↓↓↓ PERUBAHAN UTAMA ADA DI SINI ↓↓↓
+    const { jumlah, sumber } = validatedFields.data;
+
     try {
-        const { keterangan, ...restOfData } = validatedFields.data;
-
-        // Siapkan data untuk disimpan.
-        // Jika keterangan tidak ada (undefined), beri nilai default "Tabungan".
-        const dataToSave = {
-            ...restOfData,
-            tanggal: new Date(validatedFields.data.tanggal),
-            keterangan: keterangan ?? 'Tabungan', // Operator '??' memberikan nilai default
-        };
-
-        // Kirim data yang sudah aman ke Prisma
-        await prisma.transaction.create({
-            data: dataToSave,
+        // Gunakan transaksi database agar aman
+        await prisma.$transaction(async (tx) => {
+            // 1. Tambah transaksi seperti biasa
+            await tx.transaction.create({
+                data: {
+                    ...validatedFields.data,
+                    tanggal: new Date(validatedFields.data.tanggal),
+                    keterangan: validatedFields.data.keterangan ?? (validatedFields.data.tipe === 'tabungan' ? 'Tabungan' : ''),
+                },
+            });
+            // 2. Kurangi sisa uang di dompet yang sesuai
+            await tx.wallet.update({
+                where: { person: sumber },
+                data: { balance: { decrement: jumlah } },
+            });
         });
 
         revalidatePath('/');
         revalidatePath('/pengeluaran');
         revalidatePath('/tabungan');
-
-        return { success: "Transaksi berhasil ditambahkan." };
+        return { success: "Transaksi berhasil ditambahkan!" };
     } catch (error) {
         console.error(error);
-        return { error: "Gagal menyimpan ke database." };
+        return { error: "Gagal menyimpan transaksi. Pastikan sisa uang mencukupi." };
     }
 }
+
 // --- FUNGSI BARU YANG LEBIH CANGGIH ---
 export async function getFilteredTransactions({
     tipe,
@@ -63,9 +108,19 @@ export async function getFilteredTransactions({
     if (rentang !== 'semua') {
         const now = new Date();
         let tanggalMulai = new Date();
-        if (rentang === 'harian') tanggalMulai.setHours(0, 0, 0, 0); 
-        else if (rentang === 'mingguan') tanggalMulai.setDate(now.getDate() - 7);
-        else if (rentang === 'bulanan') tanggalMulai.setMonth(now.getMonth() - 1);
+        
+        // --- LOGIKA BARU DI SINI ---
+        if (rentang === 'harian') {
+            tanggalMulai.setHours(0, 0, 0, 0); // Awal hari ini
+        } else if (rentang === 'mingguan') {
+            const hariIni = now.getDay(); // Minggu = 0, Senin = 1, ...
+            const jarakKeSenin = hariIni === 0 ? 6 : hariIni - 1;
+            tanggalMulai.setDate(now.getDate() - jarakKeSenin);
+            tanggalMulai.setHours(0, 0, 0, 0); // Set ke awal hari Senin
+        } else if (rentang === 'bulanan') {
+            tanggalMulai = new Date(now.getFullYear(), now.getMonth(), 1); // Tanggal 1 bulan ini
+        }
+        
         whereClause.tanggal = { gte: tanggalMulai };
     }
 

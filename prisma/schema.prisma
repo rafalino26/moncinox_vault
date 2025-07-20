@@ -33,3 +33,9 @@ enum Sumber {
   Saya
   Pacar_Saya
 }
+
+model Wallet {
+  id      String  @id @default(cuid())
+  person  String  @unique // Akan berisi 'Saya' atau 'Pacar_Saya'
+  balance Float
+}
