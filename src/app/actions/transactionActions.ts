@@ -3,6 +3,47 @@ import prisma from '../lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
+export async function deleteTransaction(transactionId: string) {
+    if (!transactionId) {
+        return { error: "ID transaksi tidak valid." };
+    }
+
+    try {
+        // Gunakan transaksi database untuk memastikan kedua operasi berhasil atau gagal bersamaan
+        const deletedTransaction = await prisma.$transaction(async (tx) => {
+            // 1. Cari transaksi yang akan dihapus untuk mendapatkan jumlah dan sumbernya
+            const transactionToDelete = await tx.transaction.findUnique({
+                where: { id: transactionId },
+            });
+
+            if (!transactionToDelete) {
+                throw new Error("Transaksi tidak ditemukan.");
+            }
+
+            // 2. Kembalikan saldo ke dompet yang sesuai
+            await tx.wallet.update({
+                where: { person: transactionToDelete.sumber },
+                data: { balance: { increment: transactionToDelete.jumlah } },
+            });
+
+            // 3. Hapus transaksi itu sendiri
+            const deleted = await tx.transaction.delete({
+                where: { id: transactionId },
+            });
+
+            return deleted;
+        });
+
+        revalidatePath('/');
+        revalidatePath('/pengeluaran');
+        revalidatePath('/tabungan');
+
+        return { success: `Transaksi "${deletedTransaction.keterangan}" berhasil dihapus.` };
+    } catch (error) {
+        console.error(error);
+        return { error: "Gagal menghapus transaksi." };
+    }
+}
 
 export async function getWallets() {
     try {

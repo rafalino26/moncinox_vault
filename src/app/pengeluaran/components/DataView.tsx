@@ -4,7 +4,12 @@ import PengeluaranChart from "./PengeluaranChart";
 import PengeluaranTable from "./PengeluaranTable";
 import type { Transaction } from "@prisma/client";
 
-export default function DataView({ data, tipe }: { data: Transaction[], tipe: 'pengeluaran' | 'tabungan' }) {
+// Tambahkan prop onDelete
+export default function DataView({ data, tipe, onDelete }: { 
+    data: Transaction[], 
+    tipe: 'pengeluaran' | 'tabungan',
+    onDelete: (transaction: Transaction) => void
+}) {
     const searchParams = useSearchParams();
     const pathname = usePathname();
     const { replace } = useRouter();
@@ -24,9 +29,9 @@ export default function DataView({ data, tipe }: { data: Transaction[], tipe: 'p
             </div>
             
              {data.length > 0 ? (
-                view === 'tabel' ? <PengeluaranTable data={data} tipe={tipe} /> : <PengeluaranChart data={data} tipe={tipe} />
+                view === 'tabel' ? <PengeluaranTable data={data} tipe={tipe} onDelete={onDelete} /> : <PengeluaranChart data={data} tipe={tipe} />
             ) : (
-                <div className="text-center py-12"><p className="text-slate-500">Tidak ada data untuk ditampilkan.</p></div>
+                <div className="text-center py-12"><p className="text-slate-500">tidakk adaaaa apaaa apaaaa ayangggg</p></div>
             )}
         </div>
     );

@@ -7,13 +7,13 @@ import CustomDropdown from '../../components/CustomDropdown';
 
 // Opsi untuk setiap dropdown
 const rentangOptions = [
-    { value: 'harian', label: 'Hari Ini' }, // <-- Ganti nama & pindah ke atas
-    { value: 'mingguan', label: 'Mingguan' },
-    { value: 'bulanan', label: 'Bulanan' },
-    { value: 'semua', label: 'Semua Waktu' },
+    { value: 'harian', label: 'harii inii' }, // <-- Ganti nama & pindah ke atas
+    { value: 'mingguan', label: 'mingguu inii' },
+    { value: 'bulanan', label: 'bulann inii' },
+    { value: 'semua', label: 'semuanyaaaa' },
 ];
-const urutkanOptions = [{ value: 'terbaru', label: 'Terbaru' }, { value: 'terbesar', label: 'Terbesar' }, { value: 'terkecil', label: 'Terkecil' }];
-const sumberOptions = [{ value: 'semua', label: 'Semua Sumber' }, { value: 'Saya', label: 'Rafa' }, { value: 'Pacar_Saya', label: 'Monik' }];
+const urutkanOptions = [{ value: 'terbaru', label: 'palingg baruu' }, { value: 'terbesar', label: 'palingg bewsarr' }, { value: 'terkecil', label: 'palingg kewcill' }];
+const sumberOptions = [{ value: 'semua', label: 'beduwaaaaa' }, { value: 'Saya', label: 'ayang rafa' }, { value: 'Pacar_Saya', label: 'ayangg monikk' }];
 
 export default function FilterControls({ onSearchChange }: { onSearchChange: (term: string) => void }) {
     const searchParams = useSearchParams();
@@ -45,10 +45,10 @@ export default function FilterControls({ onSearchChange }: { onSearchChange: (te
         <div>
             {/* Desktop */}
             <div className="hidden lg:grid lg:grid-cols-4 gap-4 p-4 bg-white/30 rounded-2xl shadow-lg"> {/* <-- Diubah dari md */}
-                {renderDropdown("Rentang", rentangOptions, currentRentang, (value) => handleFilter('rentang', value))}
-                {renderDropdown("Urutkan", urutkanOptions, currentUrutkan, (value) => handleFilter('urutkan', value))}
-                {renderDropdown("Sumber", sumberOptions, currentSumber, (value) => handleFilter('sumber', value))}
-                <div className='self-end'><input type="text" placeholder="Cari..." onChange={(e) => handleSearch(e.target.value)} className="w-full p-3 bg-white/50 border border-black/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5c2799]" /></div>
+                {renderDropdown("kapannn", rentangOptions, currentRentang, (value) => handleFilter('rentang', value))}
+                {renderDropdown("urutiinnn", urutkanOptions, currentUrutkan, (value) => handleFilter('urutkan', value))}
+                {renderDropdown("ayang siapaaa", sumberOptions, currentSumber, (value) => handleFilter('sumber', value))}
+                <div className='self-end'><input type="text" placeholder="nyarii apaaa..." onChange={(e) => handleSearch(e.target.value)} className="w-full p-3 bg-white/50 border border-black/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5c2799]" /></div>
             </div>
             {/* Tampilan Mobile & Tablet Kecil (di bawah lg) */}
             <div className="lg:hidden flex gap-2"> {/* <-- Diubah dari md */}

@@ -9,10 +9,10 @@ export default async function DashboardCharts() {
         <div className="mb-8">
             {/* Grid yang responsif untuk dua grafik */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="bg-white/30 p-5 rounded-2xl shadow-lg">
+                <div className="bg-white/50 p-5 rounded-2xl shadow-lg">
                     <ComparisonChart pemasukan={totalPemasukan} pengeluaran={totalPengeluaran} />
                 </div>
-                <div className="bg-white/30 p-5 rounded-2xl shadow-lg">
+                <div className="bg-white/50 p-5 rounded-2xl shadow-lg">
                     <TrendChart data={weeklySpending} />
                 </div>
             </div>

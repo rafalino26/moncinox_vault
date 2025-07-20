@@ -12,7 +12,7 @@ interface ComparisonChartProps {
 
 export default function ComparisonChart({ pemasukan, pengeluaran }: ComparisonChartProps) {
     const data = {
-        labels: ['Pemasukan', 'Pengeluaran'],
+        labels: ['ini tabungann', 'ini keluarrr'],
         datasets: [
             {
                 label: 'Jumlah (Rp)',
@@ -38,7 +38,7 @@ export default function ComparisonChart({ pemasukan, pengeluaran }: ComparisonCh
             },
             title: {
                 display: true,
-                text: 'Perbandingan Bulan Ini',
+                text: 'bulan iniiiiii',
             },
         },
     };

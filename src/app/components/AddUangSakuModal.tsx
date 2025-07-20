@@ -3,15 +3,16 @@
 import { FiX, FiLoader } from "react-icons/fi";
 import { addUangSaku } from "@/app/actions/transactionActions";
 import { useState, ChangeEvent } from "react";
+import { useRouter } from 'next/navigation';
 
 interface ModalProps {
     person: 'Saya' | 'Pacar_Saya';
     personName: string;
     onClose: () => void;
-    onSuccess: () => void;
 }
 
-export default function AddUangSakuModal({ person, personName, onClose, onSuccess }: ModalProps) {
+export default function AddUangSakuModal({ person, personName, onClose }: ModalProps) {
+    const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [displayValue, setDisplayValue] = useState('');
     const [realValue, setRealValue] = useState('');
@@ -35,12 +36,12 @@ export default function AddUangSakuModal({ person, personName, onClose, onSucces
         if (result.error) {
             alert(result.error);
         } else {
-            onSuccess(); // <-- Panggil fungsi onSuccess
+            router.refresh();
             onClose();   // <-- Tutup modal
         }
     };
     return (
-        
+
         <>
             {/* --- TAMBAHKAN LOADING OVERLAY DI SINI --- */}
             {isLoading && (

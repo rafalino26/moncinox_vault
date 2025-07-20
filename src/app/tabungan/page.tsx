@@ -5,7 +5,7 @@ export default function TabunganPage() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-3xl font-bold text-[#5c2799]">Rekap Tabungan, BANYA BANYA BATABUNG</h1>
+                <h1 className="text-3xl font-bold text-[#5c2799]">iniii tabungann</h1>
             </div>
             
             <Suspense fallback={<div className="text-center p-12">Memuat...</div>}>

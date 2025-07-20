@@ -1,6 +1,7 @@
 'use client';
 // Impor useState dan ChangeEvent
 import { addTransaction } from "../actions/transactionActions";
+import { useRouter } from 'next/navigation'; 
 import { useRef, useState, ChangeEvent } from 'react';
 import { FiTrendingDown, FiTrendingUp, FiLoader } from 'react-icons/fi';
 import CustomDropdown from "./CustomDropdown";
@@ -9,10 +10,10 @@ import NotificationPopup from './NotificationPopup';
 // Definisikan tipe untuk state kita agar lebih aman
 type TransactionType = 'pengeluaran' | 'tabungan';
 
-export default function TransactionForm({ onSuccess }: { onSuccess: () => void }) {
+export default function TransactionForm() {
     const formRef = useRef<HTMLFormElement>(null);
     const inputClass = "w-full p-3 bg-white/50 border border-black/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d9b3ff]";
-
+    const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -25,8 +26,8 @@ export default function TransactionForm({ onSuccess }: { onSuccess: () => void }
     const [sumber, setSumber] = useState('Saya');
 
       const sumberOptions = [
-        { value: 'Saya', label: 'Rafa' },
-        { value: 'Pacar_Saya', label: 'Monik' },
+        { value: 'Saya', label: 'ayang rafa' },
+        { value: 'Pacar_Saya', label: 'ayang monikkkk yanggg palingggg cantikkkkk dimukaaaaaa bumiiiiiiii' },
     ];
 
     const handleAmountChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -61,7 +62,7 @@ export default function TransactionForm({ onSuccess }: { onSuccess: () => void }
             setRealValue('');
             setTipe('pengeluaran');
             setSumber('Saya');
-            onSuccess();
+            router.refresh();
         }
     };
 
@@ -91,14 +92,14 @@ export default function TransactionForm({ onSuccess }: { onSuccess: () => void }
                 </div>
             )}
         <div className="bg-gray-50 p-6 sm:p-8 rounded-2xl shadow-lg mb-8">
-            <h2 className="text-xl font-bold text-center text-[#5c2799] mb-4">BATAMBAH DATA ANJAY</h2>
+            <h2 className="text-xl font-bold text-center text-[#5c2799] mb-4">NAMBAHH DATAAA AYANGGG</h2>
             
             <div className="grid grid-cols-2 gap-3 mb-6">
             <button type="button" onClick={() => setTipe('pengeluaran')} className={`${baseButtonClass} ${tipe === 'pengeluaran' ? active_ButtonClass : inactiveButtonClass}`}>
-                <FiTrendingDown className="inline-block mr-2" /> Kaluar Doi
+                <FiTrendingDown className="inline-block mr-2" /> keluarrrr
             </button>
             <button type="button" onClick={() => setTipe('tabungan')} className={`${baseButtonClass} ${tipe === 'tabungan' ? active_ButtonClass : inactiveButtonClass}`}>
-                <FiTrendingUp className="inline-block mr-2" /> Batabung
+                <FiTrendingUp className="inline-block mr-2" /> nabungggg
             </button>
             </div>
 
@@ -110,7 +111,7 @@ export default function TransactionForm({ onSuccess }: { onSuccess: () => void }
                 {/* --- Kolom Keterangan (Hanya muncul jika 'kaluar doi') --- */}
                 {tipe === 'pengeluaran' && (
                     <div>
-                        <label htmlFor="keterangan" className="text-sm font-medium text-[#8451b6] mb-1 block">Ada kaluar doi for apa?</label>
+                        <label htmlFor="keterangan" className="text-sm font-medium text-[#8451b6] mb-1 block">kluar uang buat apaaa sayanggg</label>
                         <input type="text" id="keterangan" name="keterangan" placeholder="KEBUTUHAN BUKAN KEINGINAN" className={inputClass} required />
                     </div>
                 )}
@@ -118,12 +119,12 @@ export default function TransactionForm({ onSuccess }: { onSuccess: () => void }
                 {/* --- Kolom Jumlah dan Tanggal (Selalu muncul) --- */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label htmlFor="jumlahDisplay" className="text-sm font-medium text-[#8451b6] mb-1 block">Brapa?</label>
+                        <label htmlFor="jumlahDisplay" className="text-sm font-medium text-[#8451b6] mb-1 block">brapaaaa sayanggggg</label>
                         <input type="text" id="jumlahDisplay" name="jumlahDisplay" placeholder={tipe === 'pengeluaran' ? "JANGAN BA BOROS!" : "RAJIN-RAJIN MENABUNG"} className={inputClass} value={displayValue} onChange={handleAmountChange} inputMode="numeric" required />
                         <input type="hidden" name="jumlah" value={realValue} />
                     </div>
                     <div>
-                            <label htmlFor="tanggal" className="text-sm font-medium text-[#8451b6] mb-1 block">Tanggal brapa?</label>
+                            <label htmlFor="tanggal" className="text-sm font-medium text-[#8451b6] mb-1 block">tgl brapaaaa sayanggggg</label>
                             {/* Gunakan fungsi baru kita untuk defaultValue */}
                             <input 
                                 type="date" 
@@ -138,7 +139,7 @@ export default function TransactionForm({ onSuccess }: { onSuccess: () => void }
 
                 {/* --- Kolom Sumber (Selalu muncul) --- */}
                 <div>
-                    <label htmlFor="sumber" className="text-sm font-medium text-[#8451b6] mb-1 block">Sapa pe doi ini?</label>
+                    <label htmlFor="sumber" className="text-sm font-medium text-[#8451b6] mb-1 block">ayang rafa / ayanggg monikkkk tercantikkk</label>
                     <CustomDropdown 
                         options={sumberOptions}
                         selectedValue={sumber}
@@ -147,7 +148,7 @@ export default function TransactionForm({ onSuccess }: { onSuccess: () => void }
                 </div>
                 
                  <button type="submit" disabled={isLoading} className="w-full p-3 text-white bg-[#743ab7] rounded-lg font-semibold hover:bg-[#8451b6] transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#5c2799] disabled:bg-slate-400 disabled:cursor-not-allowed">
-                        {isLoading ? 'LOADING..' : 'SO BTUL?'}
+                        {isLoading ? 'LOADING..' : 'apakahh sudah benarrr???'}
                     </button>
             </form>
         </div>

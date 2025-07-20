@@ -1,40 +1,29 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense, ReactNode } from 'react'; // <-- Tambah ReactNode
+// Hapus useState, useEffect, useCallback, dan getWallets
+import { Suspense, ReactNode } from 'react'; 
 import type { Wallet } from '@prisma/client';
-
-import { getWallets } from '@/app/actions/transactionActions';
 
 import StatCards from './StatCards';
 import TransactionForm from './TransactionForm';
 import CollapsibleSection from './CollapsibleSection';
 
-// Terima props baru: charts dan transactionList
 export default function DashboardView({ charts, transactionList }: { charts: ReactNode, transactionList: ReactNode }) {
-    const [wallets, setWallets] = useState<{ rafaWallet: Wallet | null, monikWallet: Wallet | null }>({ rafaWallet: null, monikWallet: null });
-    
-    // Fungsi ini sekarang hanya mengambil data wallet
-    const refreshData = useCallback(async () => {
-        const walletData = await getWallets();
-        setWallets(walletData);
-    }, []);
-
-    useEffect(() => {
-        refreshData();
-    }, [refreshData]);
+    // Hapus semua state dan fungsi refreshData dari sini
 
     return (
         <div className="space-y-8">
-            <StatCards wallets={wallets} onDataUpdate={refreshData} />
-            <TransactionForm onSuccess={refreshData} />
+            {/* Panggil StatCards tanpa props */}
+            <StatCards />
             
-            <CollapsibleSection title="Grafik & Tren">
-                {/* Tampilkan komponen yang dititipkan */}
+            {/* Panggil TransactionForm tanpa props */}
+            <TransactionForm />
+            
+            <CollapsibleSection title="inii buat liatt grafikkk ayanggg">
                 {charts}
             </CollapsibleSection>
             
-            <CollapsibleSection title="Riwayat Transaksi Terbaru">
-                {/* Tampilkan komponen yang dititipkan */}
+            <CollapsibleSection title="terus ini buat liat historyy hehe">
                 {transactionList}
             </CollapsibleSection>
         </div>

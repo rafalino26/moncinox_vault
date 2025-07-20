@@ -38,7 +38,7 @@ export default function TrendChart({ data }: { data: Transaction[] }) {
             },
             title: {
                 display: true,
-                text: 'Tren Pengeluaran 7 Hari Terakhir',
+                text: 'iniii 7 hari terakhirrr',
             },
         },
     };

@@ -25,7 +25,7 @@ export default function TransactionList({ transactions }: { transactions: Transa
         ))
       ) : (
         <div className="bg-white/30 text-center p-8 rounded-xl shadow-lg">
-          <p className="text-slate-500">Belum ada data transaksi.</p>
+          <p className="text-slate-500">belum ada apaaa apaaa ayanggg</p>
         </div>
       )}
     </div>

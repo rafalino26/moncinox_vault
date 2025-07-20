@@ -5,7 +5,7 @@ export default function PengeluaranPage() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-3xl font-bold text-[#5c2799]">Rekap Pengeluaran, STOP KALUAR DOI</h1>
+                <h1 className="text-3xl font-bold text-[#5c2799]">liatt pengeluarannn</h1>
             </div>
             
             <Suspense fallback={<div className="text-center p-12">Memuat...</div>}>
