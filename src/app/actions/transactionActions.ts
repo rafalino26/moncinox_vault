@@ -98,12 +98,16 @@ export async function getFilteredTransactions({
     urutkan,
     sumber,
 }: {
-    tipe: 'pengeluaran' | 'tabungan';
+    tipe?: 'pengeluaran' | 'tabungan';
     rentang: string;
     urutkan: string;
     sumber?: 'Saya' | 'Pacar_Saya';
 }) {
-    let whereClause: any = { tipe: tipe };
+    let whereClause: any = {};
+    
+    if (tipe) {
+        whereClause.tipe = tipe;
+    }
 
     if (rentang !== 'semua') {
         const now = new Date();

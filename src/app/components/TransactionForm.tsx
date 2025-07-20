@@ -9,7 +9,7 @@ import NotificationPopup from './NotificationPopup';
 // Definisikan tipe untuk state kita agar lebih aman
 type TransactionType = 'pengeluaran' | 'tabungan';
 
-export default function TransactionForm() {
+export default function TransactionForm({ onSuccess }: { onSuccess: () => void }) {
     const formRef = useRef<HTMLFormElement>(null);
     const inputClass = "w-full p-3 bg-white/50 border border-black/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d9b3ff]";
 
@@ -61,6 +61,7 @@ export default function TransactionForm() {
             setRealValue('');
             setTipe('pengeluaran');
             setSumber('Saya');
+            onSuccess();
         }
     };
 
