@@ -6,11 +6,12 @@ import { useRef, useState, ChangeEvent } from 'react';
 import { FiTrendingDown, FiTrendingUp, FiLoader } from 'react-icons/fi';
 import CustomDropdown from "./CustomDropdown";
 import NotificationPopup from './NotificationPopup';
+import SubmitButton from './SubmitButton';
 
 // Definisikan tipe untuk state kita agar lebih aman
 type TransactionType = 'pengeluaran' | 'tabungan';
 
-export default function TransactionForm() {
+export default function TransactionForm({ onSuccess }: { onSuccess: () => void }) {
     const formRef = useRef<HTMLFormElement>(null);
     const inputClass = "w-full p-3 bg-white/50 border border-black/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d9b3ff]";
     const router = useRouter();
@@ -63,6 +64,7 @@ export default function TransactionForm() {
             setTipe('pengeluaran');
             setSumber('Saya');
             router.refresh();
+            onSuccess();
         }
     };
 
@@ -86,11 +88,7 @@ export default function TransactionForm() {
             {status && <NotificationPopup status={status} onClose={() => setStatus(null)} />}
 
             {/* Tampilkan Loading Overlay jika sedang loading */}
-            {isLoading && (
-                <div className="fixed inset-0 bg-black/30 z-50 flex justify-center items-center">
-                    <FiLoader className="text-white text-5xl animate-spin" />
-                </div>
-            )}
+            
         <div className="bg-gray-50 p-6 sm:p-8 rounded-2xl shadow-lg mb-8">
             <h2 className="text-xl font-bold text-center text-[#5c2799] mb-4">NAMBAHH DATAAA AYANGGG</h2>
             
@@ -147,9 +145,7 @@ export default function TransactionForm() {
                     />
                 </div>
                 
-                 <button type="submit" disabled={isLoading} className="w-full p-3 text-white bg-[#743ab7] rounded-lg font-semibold hover:bg-[#8451b6] transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#5c2799] disabled:bg-slate-400 disabled:cursor-not-allowed">
-                        {isLoading ? 'LOADING..' : 'apakahh sudah benarrr???'}
-                    </button>
+                 <SubmitButton>SO BTUL?</SubmitButton>
             </form>
         </div>
         </>

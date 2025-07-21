@@ -4,16 +4,17 @@ import { FiX, FiLoader } from "react-icons/fi";
 import { addUangSaku } from "@/app/actions/transactionActions";
 import { useState, ChangeEvent } from "react";
 import { useRouter } from 'next/navigation';
+import SubmitButton from "./SubmitButton";
 
 interface ModalProps {
     person: 'Saya' | 'Pacar_Saya';
     personName: string;
     onClose: () => void;
+    onSuccess: () => void;
 }
 
-export default function AddUangSakuModal({ person, personName, onClose }: ModalProps) {
+export default function AddUangSakuModal({ person, personName, onClose, onSuccess }: ModalProps) {
     const router = useRouter();
-    const [isLoading, setIsLoading] = useState(false);
     const [displayValue, setDisplayValue] = useState('');
     const [realValue, setRealValue] = useState('');
 
@@ -29,26 +30,21 @@ export default function AddUangSakuModal({ person, personName, onClose }: ModalP
     
     const handleSubmit = async (formData: FormData) => {
         formData.set('amount', realValue);
-        setIsLoading(true);
+
         const result = await addUangSaku(formData);
-        setIsLoading(false);
+       
 
         if (result.error) {
             alert(result.error);
         } else {
             router.refresh();
-            onClose();   // <-- Tutup modal
+            onClose(); 
+            onSuccess();  // <-- Tutup modal
         }
     };
     return (
 
         <>
-            {/* --- TAMBAHKAN LOADING OVERLAY DI SINI --- */}
-            {isLoading && (
-                <div className="fixed inset-0 bg-black/30 z-[60] flex justify-center items-center">
-                    <FiLoader className="text-white text-5xl animate-spin" />
-                </div>
-            )}
 
             <div className="fixed inset-0 bg-black/40 z-50 flex justify-center items-center p-4">
                 <div className="bg-gray-50 rounded-2xl p-6 w-full max-w-sm space-y-4">
@@ -72,10 +68,7 @@ export default function AddUangSakuModal({ person, personName, onClose }: ModalP
                             />
                             <input type="hidden" name="amount" value={realValue} />
                         </div>
-                        <button type="submit" disabled={isLoading} className="w-full p-3 text-white bg-[#743ab7] rounded-lg font-semibold hover:bg-[#8451b6] disabled:bg-slate-400">
-                            {/* --- Ubah teks tombol saat loading --- */}
-                            {isLoading ? 'Menyimpan...' : 'Tambah'}
-                        </button>
+                        <SubmitButton>Tambah</SubmitButton>
                     </form>
                 </div>
             </div>
