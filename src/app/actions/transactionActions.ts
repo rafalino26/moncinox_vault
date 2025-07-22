@@ -173,7 +173,7 @@ export async function getFilteredTransactions({
         whereClause.sumber = sumber;
     }
 
-    let orderBy: any = { tanggal: 'desc' };
+    let orderBy: any = {  createdAt: 'desc' };
     if (urutkan === 'terbesar') orderBy = { jumlah: 'desc' };
     else if (urutkan === 'terkecil') orderBy = { jumlah: 'asc' };
     
