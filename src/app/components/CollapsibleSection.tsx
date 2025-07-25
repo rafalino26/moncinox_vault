@@ -28,12 +28,16 @@ export default function CollapsibleSection({ title, children, defaultOpen = true
                 />
             </button>
             
-            {/* Konten yang akan muncul/hilang */}
-            {isOpen && (
-                <div className="px-4 pb-4">
+           <div 
+                className={`grid transition-all duration-500 ease-in-out ${
+                    isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                }`}
+            >
+                {/* Konten yang akan muncul/hilang */}
+                <div className="overflow-hidden px-4 pb-4">
                     {children}
                 </div>
-            )}
+            </div>
         </div>
     );
 }
