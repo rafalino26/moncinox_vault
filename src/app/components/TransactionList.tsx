@@ -9,16 +9,18 @@ export default function TransactionList({ transactions }: { transactions: Transa
         transactions.map(t => (
           // Gunakan style 'frosted glass' agar konsisten
           <div key={t.id} className="bg-gray-50 p-4 rounded-xl shadow-lg flex justify-between items-center">
-            <div className="flex items-center space-x-4">
-              <div className={`w-3 h-3 rounded-full ${t.tipe === 'pengeluaran' ? 'bg-red-500' : 'bg-green-500'}`}></div>
-              <div>
-                <p className="font-bold text-slate-800">{t.keterangan}</p>
+            <div className="flex items-start space-x-4">
+              <div className={`w-3 h-3 rounded-full mt-3 flex-shrink-0 ${t.tipe === 'pengeluaran' ? 'bg-red-500' : 'bg-green-500'}`}></div>
+              {/* ↓↓↓ Batasi lebar teks di sini ↓↓↓ */}
+              <div className="flex-1">
+                <p className="font-bold text-slate-800 break-words">{t.keterangan}</p>
                 <p className="text-sm text-slate-600">
                   {new Date(t.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} • {t.sumber === 'Saya' ? 'Rafa' : 'Monik'}
                 </p>
               </div>
             </div>
-            <p className={`font-bold text-md ${t.tipe === 'pengeluaran' ? 'text-red-600' : 'text-green-600'}`}>
+            {/* ↓↓↓ Pastikan harga tidak mengecil dan rata kanan ↓↓↓ */}
+            <p className={`font-bold text-md whitespace-nowrap text-right ml-4 ${t.tipe === 'pengeluaran' ? 'text-red-600' : 'text-green-600'}`}>
               {t.tipe === 'pengeluaran' ? '-' : '+'}Rp{t.jumlah.toLocaleString('id-ID')}
             </p>
           </div>
