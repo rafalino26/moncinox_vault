@@ -29,10 +29,10 @@ export default function StatCards({ wallets, onDataUpdate }: {
                 <h2 className="text-xl font-bold text-slate-800 mb-4">Ringkasan Saat Ini</h2>
                 <div className="grid grid-cols-2 gap-4">
                     <button onClick={() => handleCardClick('Saya')} className="text-left">
-                        <StatCard title="Sisa Uang Rafa" value={formatRupiah(wallets.rafaWallet?.balance)} Icon="/rafa.png" color="transparent" />
+                        <StatCard title="ayangg rafaaa" value={formatRupiah(wallets.rafaWallet?.balance)} Icon="/rafa.png" color="transparent" />
                     </button>
                     <button onClick={() => handleCardClick('Pacar_Saya')} className="text-left">
-                        <StatCard title="Sisa Uang Monik" value={formatRupiah(wallets.monikWallet?.balance)} Icon="/monik.png" color="transparent" />
+                        <StatCard title="ayangg monikkk" value={formatRupiah(wallets.monikWallet?.balance)} Icon="/monik.png" color="transparent" />
                     </button>
                 </div>
             </div>
