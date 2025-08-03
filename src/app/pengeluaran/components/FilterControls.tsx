@@ -9,9 +9,11 @@ import CustomDropdown from '../../components/CustomDropdown';
 const rentangOptions = [
     { value: 'harian', label: 'harii inii' }, // <-- Ganti nama & pindah ke atas
     { value: 'mingguan', label: 'mingguu inii' },
-    { value: 'bulanan', label: 'bulann inii' },
+    { value: 'bulanan', label: 'sebulan terkahirrr' },
     { value: 'semua', label: 'semuanyaaaa' },
+    { value: 'custom', label: 'Pilih Tanggal...' },
 ];
+
 const urutkanOptions = [{ value: 'terbaru', label: 'palingg baruu' }, { value: 'terbesar', label: 'palingg bewsarr' }, { value: 'terkecil', label: 'palingg kewcill' }];
 const sumberOptions = [{ value: 'semua', label: 'beduwaaaaa' }, { value: 'Saya', label: 'ayang rafa' }, { value: 'Pacar_Saya', label: 'ayangg monikk' }];
 
@@ -21,10 +23,15 @@ export default function FilterControls({ onSearchChange }: { onSearchChange: (te
     const { replace } = useRouter();
     const [isFilterOpen, setIsFilterOpen] = useState(false);
 
+    
     const handleFilter = (key: string, value: string) => {
         const params = new URLSearchParams(searchParams);
-        if (value && value !== 'semua') params.set(key, value);
-        else params.delete(key);
+        params.set(key, value);
+        // Jika memilih rentang selain custom, hapus parameter from & to
+        if (key === 'rentang' && value !== 'custom') {
+            params.delete('from');
+            params.delete('to');
+        }
         replace(`${pathname}?${params.toString()}`);
     };
     
@@ -55,6 +62,18 @@ export default function FilterControls({ onSearchChange }: { onSearchChange: (te
                 <input type="text" placeholder="Cari pengeluaran..." onChange={(e) => handleSearch(e.target.value)} className="flex-grow p-3 bg-white/50 border border-black/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5c2799]" />
                 <button onClick={() => setIsFilterOpen(true)} className="p-3 bg-white/50 border border-black/10 rounded-lg"><FiFilter className="text-xl text-slate-700" /></button>
             </div>
+             {currentRentang === 'custom' && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t border-black/10">
+                        <div>
+                            <label className="text-sm font-medium text-slate-700 mb-1 block">Dari Tanggal</label>
+                            <input type="date" onChange={(e) => handleFilter('from', e.target.value)} defaultValue={searchParams.get('from') || ''} className="w-full p-2 bg-white/50 border border-black/10 rounded-lg"/>
+                        </div>
+                        <div>
+                            <label className="text-sm font-medium text-slate-700 mb-1 block">Sampai Tanggal</label>
+                            <input type="date" onChange={(e) => handleFilter('to', e.target.value)} defaultValue={searchParams.get('to') || ''} className="w-full p-2 bg-white/50 border border-black/10 rounded-lg"/>
+                        </div>
+                    </div>
+                )}
             {isFilterOpen && (
                 <div className="fixed inset-0 bg-black/40 z-50 flex justify-center items-center p-4" onClick={() => setIsFilterOpen(false)}>
                     <div className="bg-gray-50 rounded-2xl p-6 w-full max-w-sm space-y-4" onClick={(e) => e.stopPropagation()}>

@@ -132,59 +132,61 @@ export async function addTransaction(formData: FormData) {
     }
 }
 
-// --- FUNGSI BARU YANG LEBIH CANGGIH ---
+
 export async function getFilteredTransactions({
     tipe,
     rentang, 
     urutkan,
     sumber,
+    from, // <-- Parameter baru untuk tanggal mulai
+    to,   // <-- Parameter baru untuk tanggal akhir
 }: {
     tipe?: 'pengeluaran' | 'tabungan';
-    rentang: string;
+    rentang: string; 
     urutkan: string;
     sumber?: 'Saya' | 'Pacar_Saya';
+    from?: string;
+    to?: string;
 }) {
     let whereClause: any = {};
-    
-    if (tipe) {
-        whereClause.tipe = tipe;
-    }
+    if (tipe) whereClause.tipe = tipe;
 
-    if (rentang !== 'semua') {
+    // --- LOGIKA BARU UNTUK RENTANG TANGGAL ---
+    if (rentang === 'custom' && from && to) {
+        const startDate = new Date(from);
+        const endDate = new Date(to);
+        endDate.setHours(23, 59, 59, 999); // Pastikan mencakup hingga akhir hari
+        whereClause.tanggal = { gte: startDate, lte: endDate };
+    } else if (rentang !== 'semua') {
         const now = new Date();
         let tanggalMulai = new Date();
         
-        // --- LOGIKA BARU DI SINI ---
-        if (rentang === 'harian') {
-            tanggalMulai.setHours(0, 0, 0, 0); // Awal hari ini
-        } else if (rentang === 'mingguan') {
-            const hariIni = now.getDay(); // Minggu = 0, Senin = 1, ...
+        if (rentang === 'harian') tanggalMulai.setHours(0, 0, 0, 0);
+        else if (rentang === 'mingguan') {
+            const hariIni = now.getDay();
             const jarakKeSenin = hariIni === 0 ? 6 : hariIni - 1;
             tanggalMulai.setDate(now.getDate() - jarakKeSenin);
-            tanggalMulai.setHours(0, 0, 0, 0); // Set ke awal hari Senin
-        } else if (rentang === 'bulanan') {
-            tanggalMulai = new Date(now.getFullYear(), now.getMonth(), 1); // Tanggal 1 bulan ini
+            tanggalMulai.setHours(0, 0, 0, 0);
+        } else if (rentang === 'bulanan') { // <-- Logika baru: 30 hari terakhir
+            tanggalMulai.setDate(now.getDate() - 30);
         }
         
-        whereClause.tanggal = { gte: tanggalMulai };
+        if(rentang !== 'custom') whereClause.tanggal = { gte: tanggalMulai };
     }
+    // Jika rentang === 'semua', kita tidak menambahkan filter tanggal sama sekali.
 
-    if (sumber) {
-        whereClause.sumber = sumber;
-    }
+    if (sumber) whereClause.sumber = sumber;
 
-    let orderBy: any = {  createdAt: 'desc' };
+    let orderBy: any = { createdAt: 'desc' };
     if (urutkan === 'terbesar') orderBy = { jumlah: 'desc' };
     else if (urutkan === 'terkecil') orderBy = { jumlah: 'asc' };
     
     try {
         const transactions = await prisma.transaction.findMany({ where: whereClause, orderBy: orderBy });
         return transactions;
-    } catch (error) {
-        console.error("Gagal mengambil transaksi:", error);
-        return [];
-    }
+    } catch (error) { return [] }
 }
+
 
 export async function getDashboardStats() {
     const now = new Date();
