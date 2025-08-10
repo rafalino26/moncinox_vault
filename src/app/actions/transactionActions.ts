@@ -65,31 +65,54 @@ export async function getWallets() {
     }
 }
 
-// --- FUNGSI BARU UNTUK MENAMBAH UANG SAKU ---
 export async function addUangSaku(formData: FormData) {
     const person = formData.get('person') as 'Saya' | 'Pacar_Saya';
     const amount = Number(formData.get('amount'));
 
-    if (!person || !amount || amount <= 0) {
-        return { error: "Jumlah tidak valid." };
-    }
+    if (!person || !amount || amount <= 0) return { error: "Jumlah tidak valid." };
 
     try {
-        await prisma.wallet.update({
-            where: { person: person },
-            data: { balance: { increment: amount } },
+        await prisma.$transaction(async (tx) => {
+            // 1. Update saldo dompet
+            await tx.wallet.update({ where: { person }, data: { balance: { increment: amount } } });
+            // 2. Buat catatan di riwayat pemasukan
+            await tx.pemasukan.create({ data: { jumlah: amount, sumber: person } });
         });
         revalidatePath('/');
-        return { success: `Uang saku untuk ${person === 'Saya' ? 'Rafa' : 'Monik'} berhasil ditambahkan!` };
-    } catch (error) {
-        return { error: "Gagal memperbarui sisa uang." };
-    }
+        revalidatePath('/pemasukan');
+        return { success: "Pemasukan berhasil dicatat!" };
+    } catch (error) { return { error: "Gagal menambah pemasukan." } }
 }
+
+// BARU: Fungsi untuk mengambil riwayat pemasukan
+export async function getPemasukanHistory() {
+    try {
+        return await prisma.pemasukan.findMany({ orderBy: { createdAt: 'desc' } });
+    } catch (error) { return [] }
+}
+
+// BARU: Fungsi untuk menghapus pemasukan (dan mengembalikan saldo)
+export async function deletePemasukan(pemasukanId: string) {
+    try {
+        await prisma.$transaction(async (tx) => {
+            const pemasukanToDelete = await tx.pemasukan.findUnique({ where: { id: pemasukanId } });
+            if (!pemasukanToDelete) throw new Error("Pemasukan tidak ditemukan.");
+            // Kurangi saldo dompet
+            await tx.wallet.update({ where: { person: pemasukanToDelete.sumber }, data: { balance: { decrement: pemasukanToDelete.jumlah } } });
+            // Hapus catatan pemasukan
+            await tx.pemasukan.delete({ where: { id: pemasukanId } });
+        });
+        revalidatePath('/');
+        revalidatePath('/pemasukan');
+        return { success: "Pemasukan berhasil dihapus." };
+    } catch (error) { return { error: "Gagal menghapus pemasukan." } }
+}
+
 
 
 // ... (skema Zod dan fungsi addTransaction tetap sama)
 const TransactionSchema = z.object({
-    keterangan: z.string().optional(),
+    keterangan: z.string().min(1, "Keterangan wajib diisi."),
     jumlah: z.coerce.number().positive(),
     tanggal: z.string(),
     tipe: z.enum(['pengeluaran', 'tabungan']),

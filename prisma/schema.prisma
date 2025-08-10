@@ -39,3 +39,10 @@ model Wallet {
   person  String  @unique // Akan berisi 'Saya' atau 'Pacar_Saya'
   balance Float
 }
+
+model Pemasukan {
+  id        String   @id @default(cuid())
+  jumlah    Float
+  sumber    Sumber // 'Saya' atau 'Pacar_Saya' untuk tahu siapa yang dapat pemasukan
+  createdAt DateTime @default(now())
+}

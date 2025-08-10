@@ -1,47 +1,44 @@
 'use client';
+import { Bar } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Legend } from 'chart.js';
+import type { ComparisonData } from '@/app/types/index';
 
-import { Doughnut } from 'react-chartjs-2';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
-ChartJS.register(ArcElement, Tooltip, Legend);
-
-interface ComparisonChartProps {
-    pemasukan: number;
-    pengeluaran: number;
-}
-
-export default function ComparisonChart({ pemasukan, pengeluaran }: ComparisonChartProps) {
-    const data = {
-        labels: ['ini tabungann', 'ini keluarrr'],
+//                  ↓↓↓ Pastikan komponen menerima 'data' sebagai prop di sini ↓↓↓
+export default function ComparisonChart({ data = [] }: { data: ComparisonData[] }) {
+    const chartData = {
+        labels: data.map(d => d.tanggal).reverse(),
         datasets: [
             {
-                label: 'Jumlah (Rp)',
-                data: [pemasukan, pengeluaran],
-                backgroundColor: [
-                    'rgba(34, 197, 94, 0.7)',  // Hijau
-                    'rgba(239, 68, 68, 0.7)',   // Merah
-                ],
-                borderColor: [
-                    'rgba(34, 197, 94, 1)',
-                    'rgba(239, 68, 68, 1)',
-                ],
-                borderWidth: 1,
+                label: 'Rafa',
+                data: data.map(d => d.rafa).reverse(),
+                backgroundColor: 'rgba(59, 130, 246, 0.7)', // Biru
+                borderRadius: 5,
+            },
+            {
+                label: 'Monik',
+                data: data.map(d => d.monik).reverse(),
+                backgroundColor: 'rgba(236, 72, 153, 0.7)', // Pink
+                borderRadius: 5,
             },
         ],
     };
 
-    const options = {
+    const chartOptions: any = {
         responsive: true,
-        plugins: {
-            legend: {
-                position: 'top' as const,
-            },
+        plugins: { 
+            legend: { position: 'top' },
             title: {
-                display: true,
-                text: 'bulan iniiiiii',
-            },
+                display: false, // Judul sudah ada di induknya
+            }
+        },
+        scales: { 
+            y: {
+                beginAtZero: true,
+            }
         },
     };
 
-    return <Doughnut data={data} options={options} />;
+    return <Bar options={chartOptions} data={chartData} />;
 }

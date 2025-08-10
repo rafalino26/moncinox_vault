@@ -9,7 +9,7 @@ import type { ReactNode } from 'react';
 const navItems = [
   { href: '/', label: 'Dashboard', icon: FiGrid },
   { href: '/pengeluaran', label: 'Pengeluaran', icon: FiArrowRight },
-  { href: '/tabungan', label: 'Tabungan', icon: FiArrowLeft },
+  { href: '/pemasukan', label: 'pemasukan', icon: FiArrowLeft },
 ];
 
 const NavLinkDesktop = ({ href, children }: { href: string, children: ReactNode }) => {

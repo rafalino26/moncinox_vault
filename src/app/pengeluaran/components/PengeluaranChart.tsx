@@ -1,65 +1,56 @@
 'use client';
 
 import { Bar } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Legend } from 'chart.js';
 import type { Transaction } from '@prisma/client';
 
-// Daftarkan komponen Chart.js yang akan kita gunakan
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend
-);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
-export default function PengeluaranChart({ data = [], tipe }: { data: Transaction[], tipe: 'pengeluaran' | 'tabungan' }) {
-    // 1. Proses data untuk chart: kelompokkan berdasarkan tanggal & jumlahkan
+// Hapus 'tipe' dari props
+export default function PengeluaranChart({ data = [] }: { data: Transaction[] }) {
+    
+    // Proses data: kelompokkan berdasarkan tanggal, pisahkan pengeluaran dan tabungan
     const dataDikelompokkan = data.reduce((acc, curr) => {
         const tanggal = new Date(curr.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
         if (!acc[tanggal]) {
-            acc[tanggal] = 0;
+            acc[tanggal] = { pengeluaran: 0, tabungan: 0 };
         }
-        acc[tanggal] += curr.jumlah;
+        if (curr.tipe === 'pengeluaran') {
+            acc[tanggal].pengeluaran += curr.jumlah;
+        } else {
+            acc[tanggal].tabungan += curr.jumlah;
+        }
         return acc;
-    }, {} as Record<string, number>);
+    }, {} as Record<string, { pengeluaran: number, tabungan: number }>);
 
     const labels = Object.keys(dataDikelompokkan).reverse();
-    const chartValues = Object.values(dataDikelompokkan).reverse();
+    const pengeluaranValues = Object.values(dataDikelompokkan).map(d => d.pengeluaran).reverse();
+    const tabunganValues = Object.values(dataDikelompokkan).map(d => d.tabungan).reverse();
     
-    // 2. Siapkan data & opsi untuk format Chart.js
+    // Siapkan data dengan DUA dataset: satu untuk pengeluaran, satu untuk tabungan
     const chartData = {
         labels,
         datasets: [
             {
-                label: 'Total Pengeluaran',
-                data: chartValues,
-                backgroundColor: 'rgba(239, 68, 68, 0.6)', // Merah dengan transparansi
-                borderColor: 'rgba(239, 68, 68, 1)',
-                borderWidth: 1,
+                label: 'Pengeluaran',
+                data: pengeluaranValues,
+                backgroundColor: 'rgba(239, 68, 68, 0.6)', // Merah
+                borderRadius: 5,
+            },
+            {
+                label: 'Tabungan',
+                data: tabunganValues,
+                backgroundColor: 'rgba(34, 197, 94, 0.6)', // Hijau
                 borderRadius: 5,
             },
         ],
     };
 
-    const chartOptions = {
+    const chartOptions: any = {
         responsive: true,
         plugins: {
-            legend: {
-                display: false,
-            },
-            title: {
-                display: false, // Judul sudah ada di komponen DataView
-            },
+            legend: { position: 'top' as const },
+            title: { display: false },
             tooltip: {
                 callbacks: {
                     label: function(context: any) {
@@ -75,8 +66,11 @@ export default function PengeluaranChart({ data = [], tipe }: { data: Transactio
                 }
             }
         },
+        // Buat grafiknya menjadi 'stacked' agar lebih rapi
         scales: {
-            y: {
+            x: { stacked: true },
+            y: { 
+                stacked: true,
                 beginAtZero: true,
                 ticks: {
                     callback: function(value: any) {
@@ -84,10 +78,8 @@ export default function PengeluaranChart({ data = [], tipe }: { data: Transactio
                     }
                 }
             }
-        }
+        },
     };
-
-    const colorClass = tipe === 'pengeluaran' ? 'text-red-600' : 'text-green-600';
     
     return (
         <div className="p-4">
@@ -95,3 +87,5 @@ export default function PengeluaranChart({ data = [], tipe }: { data: Transactio
         </div>
     );
 }
+
+
