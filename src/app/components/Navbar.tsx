@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react'; // <-- Tambahkan useEffect
 import { FiGrid, FiArrowRight, FiArrowLeft, FiMenu, FiX } from 'react-icons/fi';
 import type { ReactNode } from 'react';
+import Image from 'next/image';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: FiGrid },
@@ -43,8 +44,15 @@ export default function Navbar() {
               <button onClick={() => setIsOpen(!isOpen)} className="md:hidden p-2 rounded-md text-slate-600 hover:bg-black/5">
                 <FiMenu size={24} />
               </button>
-              <Link href="/" className="text-xl font-bold text-[#5c2799]">
-                Ramon's Vault
+                {/* --- 2. Ganti Link teks dengan Image --- */}
+              <Link href="/" className="flex items-center z-50">
+                <Image
+                  src="/ramonvault.png" // Path ke logo di folder /public
+                  alt="Ramon's Vault Logo"
+                  width={120} // Atur lebar logo
+                  height={40} // Atur tinggi logo
+                  priority // Prioritaskan loading logo
+                />
               </Link>
             </div>
 
