@@ -30,14 +30,44 @@ export default function DashboardView({ charts, transactionList }: { charts: Rea
             <Sticker
         src="/stickers/stitchblue.png"
         alt="star"
-        size={200}
-        className="top-64 left-57 rotate-[-12deg] opacity-95"
+        size={60}
+        className="top-43 -left-3 rotate-[-12deg] opacity-95"
       />
       <Sticker
         src="/stickers/stitchpink.png"
         alt="love"
-        size={64}
-        className="top-40 right-60 rotate-[10deg] opacity-95"
+        size={60}
+        className=" -right-4 rotate-[10deg] opacity-95"
+      />
+      <Sticker
+        src="/stickers/stitchbareng.png"
+        alt="love"
+        size={60}
+        className="top-50 -right-0 rotate-[10deg] opacity-95"
+      />
+      <Sticker
+        src="/stickers/stitchbareng1.png"
+        alt="love"
+        size={100}
+        className="top-180 -left-6 opacity-95"
+      />
+      <Sticker
+        src="/stickers/stitchbareng2.png"
+        alt="love"
+        size={60}
+        className="top-116 right-6 opacity-95"
+      />
+      <Sticker
+        src="/stickers/stitchblue2.png"
+        alt="love"
+        size={60}
+        className="top-76 right-45 opacity-95"
+      />
+      <Sticker
+        src="/stickers/stitchblue3.png"
+        alt="love"
+        size={55}
+        className="top-176 right-2 rotate-[20deg] opacity-95"
       />
             {/* Berikan data & fungsi refresh ke StatCards */}
             <StatCards wallets={wallets} onDataUpdate={refreshData} />
