@@ -15,7 +15,7 @@ const rentangOptions = [
 ];
 
 const urutkanOptions = [{ value: 'terbaru', label: 'palingg baruu' }, { value: 'terbesar', label: 'palingg bewsarr' }, { value: 'terkecil', label: 'palingg kewcill' }];
-const sumberOptions = [{ value: 'semua', label: 'beduwaaaaa' }, { value: 'Saya', label: 'ayang rafa' }, { value: 'Pacar_Saya', label: 'ayangg monikk' }];
+const sumberOptions = [{ value: 'semua', label: 'beduwaaaaa' }, { value: 'Saya', label: 'puskaswww' }, { value: 'Pacar_Saya', label: 'miskaswww' }];
 
 export default function FilterControls({ onSearchChange }: { onSearchChange: (term: string) => void }) {
     const searchParams = useSearchParams();
@@ -54,7 +54,7 @@ export default function FilterControls({ onSearchChange }: { onSearchChange: (te
             <div className="hidden lg:grid lg:grid-cols-4 gap-4 p-4 bg-white/30 rounded-2xl shadow-lg"> {/* <-- Diubah dari md */}
                 {renderDropdown("kapannn", rentangOptions, currentRentang, (value) => handleFilter('rentang', value))}
                 {renderDropdown("urutiinnn", urutkanOptions, currentUrutkan, (value) => handleFilter('urutkan', value))}
-                {renderDropdown("ayang siapaaa", sumberOptions, currentSumber, (value) => handleFilter('sumber', value))}
+                {renderDropdown("jujungkas siapa", sumberOptions, currentSumber, (value) => handleFilter('sumber', value))}
                 <div className='self-end'><input type="text" placeholder="nyarii apaaa..." onChange={(e) => handleSearch(e.target.value)} className="w-full p-3 bg-white/50 border border-black/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5c2799]" /></div>
             </div>
             {/* Tampilan Mobile & Tablet Kecil (di bawah lg) */}

@@ -21,7 +21,7 @@ export default function ComparisonDetailModal({ date, transactions, onClose }: M
                         <div key={t.id} className="bg-white/50 p-3 rounded-lg flex justify-between items-center text-sm">
                             <div>
                                 <p className="font-bold">{t.keterangan}</p>
-                                <p className="text-xs text-slate-500">{t.sumber === 'Saya' ? 'Rafa' : 'Monik'}</p>
+                                <p className="text-xs text-slate-500">{t.sumber === 'Saya' ? 'puskassswww' : 'miskassswww'}</p>
                             </div>
                             <p className={`font-semibold ${t.tipe === 'pengeluaran' ? 'text-red-600' : 'text-green-600'}`}>
                                 {t.tipe === 'pengeluaran' ? '-' : '+'}Rp{t.jumlah.toLocaleString('id-ID')}

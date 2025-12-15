@@ -37,7 +37,7 @@ export default function PengeluaranTable({ data = [], onDelete, totalPengeluaran
                             }`}>
                                 {t.tipe === 'pengeluaran' ? '-' : '+'}Rp{t.jumlah.toLocaleString('id-ID')}
                             </td>
-                            <td className="px-6 py-4">{t.sumber === 'Saya' ? 'Rafa' : 'Monik'}</td>
+                            <td className="px-6 py-4">{t.sumber === 'Saya' ? 'puskassswww' : 'miskassswww'}</td>
                             <td className="px-6 py-4 font-bold text-slate-800 break-words">{t.keterangan}</td>
                             <td className="px-6 py-4 text-right">
                                 <button onClick={() => onDelete(t)} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-100 rounded-full">

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, ReactNode } from 'react';
 import type { Transaction, Wallet } from '@prisma/client';
+import Sticker from "@/app/components/Sticker";
 
 import { getWallets, getFilteredTransactions } from '@/app/actions/transactionActions';
 
@@ -26,6 +27,18 @@ export default function DashboardView({ charts, transactionList }: { charts: Rea
 
     return (
         <div className="space-y-8">
+            <Sticker
+        src="/stickers/stitchblue.png"
+        alt="star"
+        size={200}
+        className="top-64 left-57 rotate-[-12deg] opacity-95"
+      />
+      <Sticker
+        src="/stickers/stitchpink.png"
+        alt="love"
+        size={64}
+        className="top-40 right-60 rotate-[10deg] opacity-95"
+      />
             {/* Berikan data & fungsi refresh ke StatCards */}
             <StatCards wallets={wallets} onDataUpdate={refreshData} />
 

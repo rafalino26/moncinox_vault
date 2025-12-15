@@ -15,7 +15,7 @@ export default function TransactionList({ transactions }: { transactions: Transa
               <div className="flex-1">
                 <p className="font-bold text-slate-800 break-words">{t.keterangan}</p>
                 <p className="text-sm text-slate-600">
-                  {new Date(t.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} • {t.sumber === 'Saya' ? 'Rafa' : 'Monik'}
+                  {new Date(t.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} • {t.sumber === 'Saya' ? 'puskassswww' : 'miskassswww'}
                 </p>
               </div>
             </div>

@@ -14,8 +14,8 @@ export default function ComparisonTable({ data, summary, onDetailClick }: Compar
                 <thead className="text-xs text-slate-700 uppercase bg-black/5">
                     <tr>
                         <th scope="col" className="px-6 py-3 rounded-l-lg">Tanggal</th>
-                        <th scope="col" className="px-6 py-3 text-right">Rafa</th>
-                        <th scope="col" className="px-6 py-3 text-right">Monik</th>
+                        <th scope="col" className="px-6 py-3 text-right">puskas</th>
+                        <th scope="col" className="px-6 py-3 text-right">miskas</th>
                         <th scope="col" className="px-6 py-3 text-right">Total Hari Ini</th>
                         <th scope="col" className="px-6 py-3 text-center rounded-r-lg">Aksi</th>
                     </tr>

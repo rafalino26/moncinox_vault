@@ -17,8 +17,8 @@ export default function TransactionForm({ onSuccess }: { onSuccess: () => void }
     const [sumber, setSumber] = useState('Saya');
 
     const sumberOptions = [
-        { value: 'Saya', label: 'ayang rafa' },
-        { value: 'Pacar_Saya', label: 'ayang monikkkk yanggg palingggg cantikkkkk dimukaaaaaa bumiiiiiiii' },
+        { value: 'Saya', label: 'puskas paling jelek dan buruk dimuka bumi' },
+        { value: 'Pacar_Saya', label: 'miskaswwww yanggg palingggg cantikkkkk dimukaaaaaa bumiiiiiiii' },
     ];
 
     const handleAmountChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -74,31 +74,31 @@ export default function TransactionForm({ onSuccess }: { onSuccess: () => void }
             {status && <NotificationPopup status={status} onClose={() => setStatus(null)} />}
             
             <div className="bg-gray-50 p-6 sm:p-8 rounded-2xl shadow-lg mb-8">
-                <h2 className="text-xl font-bold text-center text-[#5c2799] mb-6">NAMBAHH DATAAA AYANGGG</h2>
+                <h2 className="text-xl font-bold text-center text-[#5c2799] mb-6">cihuyy mengisi dataww</h2>
                 
                 <form ref={formRef} action={handleFormSubmit} className="space-y-4">
                     <input type="hidden" name="sumber" value={sumber} />
 
                     {/* --- Keterangan sekarang selalu terlihat --- */}
                     <div>
-                        <label htmlFor="keterangan" className="text-sm font-medium text-[#8451b6] mb-1 block">Keterangan</label>
-                        <input type="text" id="keterangan" name="keterangan" placeholder="KEBUTUHAN BUKAN KEINGINAN" className={inputClass} required />
+                        <label htmlFor="keterangan" className="text-sm font-medium text-[#8451b6] mb-1 block">apaaaa jujungkas</label>
+                        <input type="text" id="keterangan" name="keterangan" placeholder="jujungkas" className={inputClass} required />
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label htmlFor="jumlahDisplay" className="text-sm font-medium text-[#8451b6] mb-1 block">brapaaaa sayanggggg</label>
-                            <input type="text" id="jumlahDisplay" name="jumlahDisplay" placeholder="JANGAN BA BOROS!" className={inputClass} value={displayValue} onChange={handleAmountChange} inputMode="numeric" required />
+                            <label htmlFor="jumlahDisplay" className="text-sm font-medium text-[#8451b6] mb-1 block">brapaaaa jujungkasss</label>
+                            <input type="text" id="jumlahDisplay" name="jumlahDisplay" placeholder="skulungkus" className={inputClass} value={displayValue} onChange={handleAmountChange} inputMode="numeric" required />
                             <input type="hidden" name="jumlah" value={realValue} />
                         </div>
                         <div>
-                            <label htmlFor="tanggal" className="text-sm font-medium text-[#8451b6] mb-1 block">tgl brapaaaa sayanggggg</label>
+                            <label htmlFor="tanggal" className="text-sm font-medium text-[#8451b6] mb-1 block">tanggal jujungkas</label>
                             <input type="date" id="tanggal" name="tanggal" defaultValue={getTodayString()} className={inputClass} required />
                         </div>
                     </div>
 
                     <div>
-                        <label htmlFor="sumber" className="text-sm font-medium text-[#8451b6] mb-1 block">ayang rafa / ayanggg monikkkk tercantikkk</label>
+                        <label htmlFor="sumber" className="text-sm font-medium text-[#8451b6] mb-1 block">puskasssswww jelek / miskassswww cantikkk</label>
                         <CustomDropdown options={sumberOptions} selectedValue={sumber} onSelect={setSumber} />
                     </div>
                     
@@ -111,11 +111,11 @@ export default function TransactionForm({ onSuccess }: { onSuccess: () => void }
                             className="h-5 w-5 rounded border-gray-300 text-[#743ab7] focus:ring-[#743ab7]"
                         />
                         <label htmlFor="isTabungan" className="font-medium text-slate-700">
-                            inii kalauu tabungann ayangg
+                            tabungannn jujungkasswwww
                         </label>
                     </div>
                     
-                    <SubmitButton>SO BTUL?</SubmitButton>
+                    <SubmitButton>jujungkasww</SubmitButton>
                 </form>
             </div>
         </>
