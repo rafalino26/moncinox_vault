@@ -1,0 +1,61 @@
+import { NextResponse } from 'next/server';
+import { getFilteredTransactions, addTransaction } from '@/app/actions/transactionActions'; // Adjust path if needed
+
+// ==========================================
+// GET: Fetch Transaction History
+// ==========================================
+export async function GET(request: Request) {
+  try {
+    // For the MVP, we are not doing filtering yet.
+    // We pass default values that your existing function expects.
+    const transactions = await getFilteredTransactions({
+      rentang: 'semua',
+      urutkan: 'terbaru',
+    });
+
+    return NextResponse.json(transactions);
+  } catch (error) {
+    console.error("Error fetching transactions:", error);
+    return NextResponse.json(
+      { error: "Gagal mengambil data transaksi." }, 
+      { status: 500 }
+    );
+  }
+}
+
+// ==========================================
+// POST: Add a New Transaction
+// ==========================================
+export async function POST(request: Request) {
+  try {
+    // 1. Parse the incoming JSON from the Flutter app
+    const body = await request.json();
+    
+    // 2. Map the JSON data into a FormData object
+    // This allows us to reuse your existing server action without changing it!
+    const formData = new FormData();
+    
+    if (body.keterangan) formData.append('keterangan', body.keterangan);
+    if (body.jumlah) formData.append('jumlah', body.jumlah.toString());
+    if (body.tanggal) formData.append('tanggal', body.tanggal);
+    if (body.tipe) formData.append('tipe', body.tipe);
+    if (body.sumber) formData.append('sumber', body.sumber); // 'Saya' or 'Pacar_Saya'
+
+    // 3. Call your existing server action
+    const result = await addTransaction(formData);
+
+    // 4. Handle the response based on what your action returns
+    if (result.error) {
+      return NextResponse.json({ error: result.error }, { status: 400 });
+    }
+
+    return NextResponse.json({ success: result.success }, { status: 201 });
+    
+  } catch (error) {
+    console.error("Error adding transaction:", error);
+    return NextResponse.json(
+      { error: "Terjadi kesalahan pada server." }, 
+      { status: 500 }
+    );
+  }
+}
