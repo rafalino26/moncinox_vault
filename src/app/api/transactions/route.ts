@@ -6,20 +6,23 @@ import { getFilteredTransactions, addTransaction } from '@/app/actions/transacti
 // ==========================================
 export async function GET(request: Request) {
   try {
-    // For the MVP, we are not doing filtering yet.
-    // We pass default values that your existing function expects.
-    const transactions = await getFilteredTransactions({
-      rentang: 'semua',
-      urutkan: 'terbaru',
-    });
+    const { searchParams } = new URL(request.url);
+    
+    // Default to bulanan (monthly) if no param is provided
+    const rentang = searchParams.get('rentang') || 'bulanan'; 
+    const sumberParam = searchParams.get('sumber');
+    const tipeParam = searchParams.get('tipe');
+
+    // Prepare arguments for your existing Prisma action
+    const args: any = { rentang, urutkan: 'terbaru' };
+    if (sumberParam && sumberParam !== 'semua') args.sumber = sumberParam;
+    if (tipeParam && tipeParam !== 'semua') args.tipe = tipeParam;
+
+    const transactions = await getFilteredTransactions(args);
 
     return NextResponse.json(transactions);
   } catch (error) {
-    console.error("Error fetching transactions:", error);
-    return NextResponse.json(
-      { error: "Gagal mengambil data transaksi." }, 
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Gagal mengambil data transaksi." }, { status: 500 });
   }
 }
 
