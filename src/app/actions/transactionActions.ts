@@ -279,3 +279,52 @@ export async function getDashboardStats() {
         return { totalPemasukan: 0, totalPengeluaran: 0, arusKas: 0, pengeluaranTerbesar: null, weeklySpending: [] };
     }
 }
+
+
+export async function updateTransaction(transactionId: string, updatedData: any) {
+    try {
+        await prisma.$transaction(async (tx) => {
+            // 1. Get the OLD transaction
+            const oldTx = await tx.transaction.findUnique({ where: { id: transactionId } });
+            if (!oldTx) throw new Error("Transaction not found");
+
+            // 2. REVERSE the old math from the old wallet
+            // If it was an expense, we give the money back. If it was savings, we take it out.
+            await tx.wallet.update({
+                where: { person: oldTx.sumber },
+                data: {
+                    balance: oldTx.tipe === 'pengeluaran' 
+                        ? { increment: oldTx.jumlah } 
+                        : { decrement: oldTx.jumlah }
+                }
+            });
+
+            // 3. APPLY the new math to the new wallet
+            await tx.wallet.update({
+                where: { person: updatedData.sumber },
+                data: {
+                    balance: updatedData.tipe === 'pengeluaran'
+                        ? { decrement: Number(updatedData.jumlah) }
+                        : { increment: Number(updatedData.jumlah) }
+                }
+            });
+
+            // 4. UPDATE the transaction record
+            await tx.transaction.update({
+                where: { id: transactionId },
+                data: {
+                    keterangan: updatedData.keterangan,
+                    jumlah: Number(updatedData.jumlah),
+                    tipe: updatedData.tipe,
+                    sumber: updatedData.sumber,
+                    tanggal: new Date(updatedData.tanggal),
+                }
+            });
+        });
+
+        return { success: true };
+    } catch (error) {
+        console.error("Update failed:", error);
+        return { error: "Failed to update transaction" };
+    }
+}
