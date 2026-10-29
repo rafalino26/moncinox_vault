@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import type { Transaction } from '@prisma/client';
+import Image from 'next/image';
 import { 
   FiChevronLeft, 
   FiChevronRight, 
@@ -54,9 +55,9 @@ export default function SpendingAnalysis({ transactions }: SpendingAnalysisProps
     if (touchStartX === null) return;
     const diff = touchStartX - e.changedTouches[0].clientX;
     if (diff > 40) {
-      handleNext(); // swipe kiri -> geser ke depan
+      handleNext();
     } else if (diff < -40) {
-      handlePrev(); // swipe kanan -> geser ke belakang
+      handlePrev();
     }
     setTouchStartX(null);
   };
@@ -88,12 +89,10 @@ export default function SpendingAnalysis({ transactions }: SpendingAnalysisProps
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     const filtered = transactions.filter((t) => {
-      // 1. Filter Sumber Orang
       if (selectedPerson !== 'all' && t.sumber !== selectedPerson) {
         return false;
       }
 
-      // 2. Filter Waktu
       const txDate = new Date(t.tanggal);
       if (currentMode.key === 'daily') {
         return txDate >= todayStart;
@@ -104,7 +103,7 @@ export default function SpendingAnalysis({ transactions }: SpendingAnalysisProps
       if (currentMode.key === 'monthly') {
         return txDate >= thirtyDaysAgo;
       }
-      return true; // 'all'
+      return true;
     });
 
     let expense = 0;
@@ -118,7 +117,6 @@ export default function SpendingAnalysis({ transactions }: SpendingAnalysisProps
       }
     }
 
-    // Seperti di Flutter: Arus kas total
     const totalArusKas = expense + income;
 
     return {
@@ -174,25 +172,36 @@ export default function SpendingAnalysis({ transactions }: SpendingAnalysisProps
         </button>
       </div>
 
-      {/* 2. Kartu Utama: Bisa di-klik Chevron & Bisa di-SWIPE */}
+      {/* 2. Kartu Utama: Dengan Watermark Stitch ala Kartu Wallet */}
       <div
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
-        className="relative bg-white/95 backdrop-blur-md p-6 sm:p-7 rounded-[28px] border border-purple-100/80 shadow-sm select-none cursor-grab active:cursor-grabbing transition-all hover:border-purple-200"
+        className="group relative bg-white/95 backdrop-blur-md p-6 sm:p-7 rounded-[28px] border border-purple-100/80 shadow-sm select-none cursor-grab active:cursor-grabbing transition-all hover:border-purple-200 overflow-hidden"
       >
+        {/* Hiasan Stitch & Angel di pojok belakang (Watermark Keren) */}
+        <div className="absolute -bottom-3 -right-2 opacity-20 group-hover:opacity-35 transition-opacity pointer-events-none">
+          <Image
+            src="/stickers/stitchbareng.png"
+            alt="Stitch & Angel"
+            width={110}
+            height={110}
+            className="object-contain"
+          />
+        </div>
+
         {/* Ikon Grafik di Pojok Kanan Atas */}
-        <div className="absolute top-6 right-6 text-slate-800">
+        <div className="absolute top-6 right-6 text-slate-800 z-10">
           <FiTrendingUp size={22} className="stroke-[2.5]" />
         </div>
 
         {/* Kontrol Chevron < MODE > */}
-        <div className="flex items-center justify-center gap-3">
+        <div className="flex items-center justify-center gap-3 relative z-10">
           <button
             type="button"
             onClick={handlePrev}
-            className="p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 active:scale-95 transition-all"
+            className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 active:scale-95 transition-all"
             aria-label="Mode Sebelumnya"
           >
             <FiChevronLeft size={20} className="stroke-[2.5]" />
@@ -205,7 +214,7 @@ export default function SpendingAnalysis({ transactions }: SpendingAnalysisProps
           <button
             type="button"
             onClick={handleNext}
-            className="p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 active:scale-95 transition-all"
+            className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 active:scale-95 transition-all"
             aria-label="Mode Berikutnya"
           >
             <FiChevronRight size={20} className="stroke-[2.5]" />
@@ -213,7 +222,7 @@ export default function SpendingAnalysis({ transactions }: SpendingAnalysisProps
         </div>
 
         {/* Nominal Besar di Tengah + Ikon Mata */}
-        <div className="mt-4 sm:mt-5 flex items-center justify-center gap-2.5">
+        <div className="mt-4 sm:mt-5 flex items-center justify-center gap-2.5 relative z-10">
           <p className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
             {isAmountHidden ? '••••••••' : formatRupiah(stats.totalArusKas)}
           </p>
@@ -228,7 +237,7 @@ export default function SpendingAnalysis({ transactions }: SpendingAnalysisProps
         </div>
       </div>
 
-      {/* 3. Dua Kartu di Bawah: Income vs Expense (Persis seperti Screenshot) */}
+      {/* 3. Dua Kartu di Bawah: Income vs Expense */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4">
         {/* Income Card */}
         <div className="bg-white/95 backdrop-blur-md p-4 sm:p-5 rounded-[24px] border border-purple-100/80 shadow-xs flex flex-col justify-between min-h-[105px]">

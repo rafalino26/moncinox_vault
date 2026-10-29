@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, ReactNode } from 'react';
 import type { Wallet, Transaction } from '@prisma/client';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
 import { getWallets } from '@/app/actions/transactionActions';
@@ -37,33 +36,14 @@ export default function DashboardView({
   }, [refreshData]);
 
   return (
-    <div className="space-y-5 sm:space-y-6 relative overflow-x-clip">
-      {/* 1. Banner Sapaan Minimalis 1 Baris (Hemat Tempat) */}
-      <div className="bg-white/75 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-purple-100/80 shadow-xs flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-sm sm:text-base font-extrabold text-[#5c2799] tracking-tight">
-            hellow mizukuzuw & puzuzkuw 💜
-          </span>
-        </div>
-        <div className="w-8 h-8 flex-shrink-0 relative">
-          <Image
-            src="/stickers/stitchbareng.png"
-            alt="Stitch and Angel"
-            width={32}
-            height={32}
-            className="object-contain drop-shadow-xs"
-            priority
-          />
-        </div>
-      </div>
-
-      {/* 2. Kartu Dompet Kembar (Puskasw & Miskasw) */}
+    <div className="space-y-6 sm:space-y-7 relative overflow-x-clip">
+      {/* 1. Kartu Dompet Kembar (Puskasw & Miskasw) Langsung di Atas */}
       <StatCards wallets={wallets} onDataUpdate={refreshData} />
 
-      {/* 3. Spending Analysis (Chevron < MODE > & Swipeable) */}
+      {/* 2. Spending Analysis (Chevron < MODE > & Swipeable dengan Watermark Stitch) */}
       <SpendingAnalysis transactions={allTransactions} />
 
-      {/* 4. History (Persis seperti layout screenshot) */}
+      {/* 3. History (Riwayat Transaksi Terbaru) */}
       <div className="space-y-3">
         <div className="px-1">
           <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
@@ -74,7 +54,7 @@ export default function DashboardView({
         {transactionList}
       </div>
 
-      {/* 5. Bagian Grafik & Tren */}
+      {/* 4. Bagian Grafik & Tren */}
       <div className="bg-white/80 backdrop-blur-md rounded-3xl border border-purple-100 shadow-xs overflow-hidden">
         <CollapsibleSection title="Grafik & Analisis Tren" defaultOpen={false}>
           {charts}

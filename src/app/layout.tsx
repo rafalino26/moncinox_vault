@@ -25,7 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={`${inter.className} bg-gradient-to-b from-[#f5efff] via-[#ebe0fa] to-[#e2d0f7] min-h-screen overflow-x-hidden text-slate-800 antialiased`}>
         <Navbar />
-        <main className="max-w-5xl mx-auto p-3 sm:p-6 lg:p-8 pb-24 sm:pb-16 overflow-x-hidden">
+        <main className="max-w-5xl mx-auto p-3 sm:p-6 lg:p-8 pb-28 sm:pb-16 overflow-x-hidden">
           {children}
         </main>
         
