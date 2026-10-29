@@ -1,22 +1,18 @@
 import { getDashboardStats } from "@/app/actions/transactionActions";
-import DashboardDonutChart from "./DashboardDonutChart"; // <-- Impor komponen yang benar
+import DashboardDonutChart from "./DashboardDonutChart";
 import TrendChart from "./TrendChart";
 
 export default async function DashboardCharts() {
-    const { totalPemasukan, totalPengeluaran, weeklySpending } = await getDashboardStats();
+  const { totalPemasukan, totalPengeluaran, weeklySpending } = await getDashboardStats();
 
-    return (
-        <div>
-            <h2 className="text-xl font-bold text-slate-800 mb-4">Grafik & Tren</h2>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="bg-white/30 backdrop-blur-lg p-5 rounded-2xl shadow-lg">
-                    {/* Panggil komponen yang benar di sini */}
-                    <DashboardDonutChart pemasukan={totalPemasukan} pengeluaran={totalPengeluaran} />
-                </div>
-                <div className="bg-white/30 backdrop-blur-lg p-5 rounded-2xl shadow-lg">
-                    <TrendChart data={weeklySpending} />
-                </div>
-            </div>
-        </div>
-    );
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="bg-white/80 p-4 sm:p-5 rounded-2xl border border-purple-100 shadow-xs">
+        <DashboardDonutChart pemasukan={totalPemasukan} pengeluaran={totalPengeluaran} />
+      </div>
+      <div className="bg-white/80 p-4 sm:p-5 rounded-2xl border border-purple-100 shadow-xs">
+        <TrendChart data={weeklySpending} />
+      </div>
+    </div>
+  );
 }

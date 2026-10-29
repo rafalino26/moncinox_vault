@@ -5,9 +5,8 @@ import { useState } from 'react';
 import { FiFilter, FiX } from 'react-icons/fi';
 import CustomDropdown from '../../components/CustomDropdown';
 
-// Opsi untuk setiap dropdown
 const rentangOptions = [
-    { value: 'harian', label: 'harii inii' }, // <-- Ganti nama & pindah ke atas
+    { value: 'harian', label: 'harii inii' },
     { value: 'mingguan', label: 'mingguu inii' },
     { value: 'bulanan', label: 'sebulan terkahirrr' },
     { value: 'semua', label: 'semuanyaaaa' },
@@ -23,11 +22,9 @@ export default function FilterControls({ onSearchChange }: { onSearchChange: (te
     const { replace } = useRouter();
     const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-    
     const handleFilter = (key: string, value: string) => {
         const params = new URLSearchParams(searchParams);
         params.set(key, value);
-        // Jika memilih rentang selain custom, hapus parameter from & to
         if (key === 'rentang' && value !== 'custom') {
             params.delete('from');
             params.delete('to');
@@ -43,7 +40,7 @@ export default function FilterControls({ onSearchChange }: { onSearchChange: (te
 
     const renderDropdown = (label: string, options: any[], selectedValue: string, onSelect: (value: string) => void) => (
         <div>
-            <label className="text-sm font-medium text-slate-700 mb-1 block">{label}</label>
+            <label className="text-xs font-bold uppercase tracking-wider text-purple-900 mb-1.5 block">{label}</label>
             <CustomDropdown options={options} selectedValue={selectedValue} onSelect={onSelect} />
         </div>
     );
@@ -51,33 +48,58 @@ export default function FilterControls({ onSearchChange }: { onSearchChange: (te
     return (
         <div>
             {/* Desktop */}
-            <div className="hidden lg:grid lg:grid-cols-4 gap-4 p-4 bg-white/30 rounded-2xl shadow-lg"> {/* <-- Diubah dari md */}
+            <div className="hidden lg:grid lg:grid-cols-4 gap-4 p-4 sm:p-5 bg-white/80 backdrop-blur-md rounded-2xl border border-purple-100 shadow-xs">
                 {renderDropdown("kapannn", rentangOptions, currentRentang, (value) => handleFilter('rentang', value))}
                 {renderDropdown("urutiinnn", urutkanOptions, currentUrutkan, (value) => handleFilter('urutkan', value))}
                 {renderDropdown("jujungkas siapa", sumberOptions, currentSumber, (value) => handleFilter('sumber', value))}
-                <div className='self-end'><input type="text" placeholder="nyarii apaaa..." onChange={(e) => handleSearch(e.target.value)} className="w-full p-3 bg-white/50 border border-black/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5c2799]" /></div>
+                <div className='self-end'>
+                    <label className="text-xs font-bold uppercase tracking-wider text-purple-900 mb-1.5 block">Cari</label>
+                    <input 
+                        type="text" 
+                        placeholder="nyarii apaaa..." 
+                        onChange={(e) => handleSearch(e.target.value)} 
+                        className="w-full p-3 min-h-[44px] bg-slate-50 border border-purple-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5c2799] text-base" 
+                    />
+                </div>
             </div>
-            {/* Tampilan Mobile & Tablet Kecil (di bawah lg) */}
-            <div className="lg:hidden flex gap-2"> {/* <-- Diubah dari md */}
-                <input type="text" placeholder="Cari pengeluaran..." onChange={(e) => handleSearch(e.target.value)} className="flex-grow p-3 bg-white/50 border border-black/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5c2799]" />
-                <button onClick={() => setIsFilterOpen(true)} className="p-3 bg-white/50 border border-black/10 rounded-lg"><FiFilter className="text-xl text-slate-700" /></button>
+
+            {/* Mobile */}
+            <div className="lg:hidden flex gap-2">
+                <input 
+                    type="text" 
+                    placeholder="Cari pengeluaran..." 
+                    onChange={(e) => handleSearch(e.target.value)} 
+                    className="flex-grow p-3 bg-white/90 border border-purple-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5c2799] text-base shadow-xs" 
+                />
+                <button 
+                    onClick={() => setIsFilterOpen(true)} 
+                    className="p-3 bg-white/90 border border-purple-100 rounded-xl text-purple-800 hover:bg-purple-50 shadow-xs flex items-center justify-center min-w-[48px]"
+                    aria-label="Filter"
+                >
+                    <FiFilter className="text-xl" />
+                </button>
             </div>
-             {currentRentang === 'custom' && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t border-black/10">
-                        <div>
-                            <label className="text-sm font-medium text-slate-700 mb-1 block">Dari Tanggal</label>
-                            <input type="date" onChange={(e) => handleFilter('from', e.target.value)} defaultValue={searchParams.get('from') || ''} className="w-full p-2 bg-white/50 border border-black/10 rounded-lg"/>
-                        </div>
-                        <div>
-                            <label className="text-sm font-medium text-slate-700 mb-1 block">Sampai Tanggal</label>
-                            <input type="date" onChange={(e) => handleFilter('to', e.target.value)} defaultValue={searchParams.get('to') || ''} className="w-full p-2 bg-white/50 border border-black/10 rounded-lg"/>
-                        </div>
+
+            {currentRentang === 'custom' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3 p-4 bg-white/80 rounded-2xl border border-purple-100 shadow-xs">
+                    <div>
+                        <label className="text-xs font-bold uppercase tracking-wider text-purple-900 mb-1 block">Dari Tanggal</label>
+                        <input type="date" onChange={(e) => handleFilter('from', e.target.value)} defaultValue={searchParams.get('from') || ''} className="w-full p-2.5 bg-slate-50 border border-purple-100 rounded-xl text-base"/>
                     </div>
-                )}
+                    <div>
+                        <label className="text-xs font-bold uppercase tracking-wider text-purple-900 mb-1 block">Sampai Tanggal</label>
+                        <input type="date" onChange={(e) => handleFilter('to', e.target.value)} defaultValue={searchParams.get('to') || ''} className="w-full p-2.5 bg-slate-50 border border-purple-100 rounded-xl text-base"/>
+                    </div>
+                </div>
+            )}
+
             {isFilterOpen && (
-                <div className="fixed inset-0 bg-black/40 z-50 flex justify-center items-center p-4" onClick={() => setIsFilterOpen(false)}>
-                    <div className="bg-gray-50 rounded-2xl p-6 w-full max-w-sm space-y-4" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex justify-between items-center"><h3 className="text-lg font-bold">Filter & Urutkan</h3><button onClick={() => setIsFilterOpen(false)}><FiX /></button></div>
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex justify-center items-end sm:items-center p-0 sm:p-4" onClick={() => setIsFilterOpen(false)}>
+                    <div className="bg-white rounded-t-3xl sm:rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl border border-purple-100" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-between items-center pb-3 border-b border-purple-100">
+                            <h3 className="text-base font-bold text-slate-800">Filter & Urutkan</h3>
+                            <button onClick={() => setIsFilterOpen(false)} className="p-1 rounded-full text-slate-400 hover:bg-slate-100"><FiX size={20} /></button>
+                        </div>
                         {renderDropdown("Rentang", rentangOptions, currentRentang, (value) => handleFilter('rentang', value))}
                         {renderDropdown("Urutkan", urutkanOptions, currentUrutkan, (value) => handleFilter('urutkan', value))}
                         {renderDropdown("Sumber", sumberOptions, currentSumber, (value) => handleFilter('sumber', value))}
