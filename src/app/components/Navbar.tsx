@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { ReactNode } from 'react';
 import Image from 'next/image';
 
 const navItems = [
@@ -11,24 +10,11 @@ const navItems = [
   { href: '/pemasukan', label: 'Pemasukan' },
 ];
 
-const NavLinkDesktop = ({ href, children }: { href: string; children: ReactNode }) => {
-  const pathname = usePathname();
-  const isActive = pathname === href;
-  return (
-    <Link
-      href={href}
-      className={`px-4 py-2 rounded-full text-sm font-bold transition-all duration-200 ${
-        isActive
-          ? 'bg-[#5c2799] text-white shadow-md shadow-purple-900/20'
-          : 'text-slate-600 hover:text-[#5c2799] hover:bg-purple-50'
-      }`}
-    >
-      {children}
-    </Link>
-  );
-};
-
 export default function Navbar() {
+  const pathname = usePathname();
+  const activeIndex = navItems.findIndex((item) => pathname === item.href);
+  const safeIndex = Math.max(activeIndex, 0);
+
   return (
     <nav className="bg-white/80 backdrop-blur-md sticky top-0 z-40 border-b border-purple-100 shadow-xs">
       <div className="max-w-5xl mx-auto px-4">
@@ -54,13 +40,34 @@ export default function Navbar() {
             </div>
           </Link>
 
-          {/* Desktop Navigation (Layar Lebar) */}
-          <div className="hidden md:flex items-center space-x-2">
-            {navItems.map((item) => (
-              <NavLinkDesktop key={item.href} href={item.href}>
-                {item.label}
-              </NavLinkDesktop>
-            ))}
+          {/* Desktop Navigation (Layar Lebih Besar) */}
+          <div className="relative hidden md:flex w-max items-center">
+            {/* Sliding Active Pill */}
+            <span
+              aria-hidden="true"
+              className="absolute top-0 bottom-0 left-0 rounded-full bg-[#5c2799] shadow-md shadow-purple-900/20 transition-transform duration-300 ease-out pointer-events-none"
+              style={{
+                width: `calc(100% / ${navItems.length})`,
+                transform: `translateX(${safeIndex * 100}%)`,
+              }}
+            />
+
+            {navItems.map((item, index) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`relative z-10 flex-1 px-4 text-left text-sm font-bold rounded-full py-2 transition-colors duration-200 focus:outline-none ${
+                    isActive
+                      ? 'text-white'
+                      : 'text-slate-600 hover:text-[#5c2799] hover:bg-purple-50'
+                  }`}
+                >
+                  <span className="block">{item.label}</span>
+                </Link>
+              );
+            })}
           </div>
         </div>
       </div>
