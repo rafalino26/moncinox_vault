@@ -59,7 +59,6 @@ export default function AddUangSakuModal({
         setIsSubmitting(false);
         onClose();
         onSuccess();
-        router.refresh();
       }
     } catch (err) {
       setErrorMessage('Gagal menambahkan pemasukan.');

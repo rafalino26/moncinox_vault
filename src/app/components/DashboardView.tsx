@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import { useCallback, ReactNode } from 'react';
 import type { Wallet, Transaction } from '@prisma/client';
 import { useRouter } from 'next/navigation';
 
-import { getWallets } from '@/app/actions/transactionActions';
 import StatCards from './StatCards';
 import CollapsibleSection from './CollapsibleSection';
 import SpendingAnalysis from './SpendingAnalysis';
@@ -13,41 +12,19 @@ export default function DashboardView({
   charts,
   transactionList,
   allTransactions = [],
+  wallets,
 }: {
   charts: ReactNode;
   transactionList: ReactNode;
   allTransactions?: Transaction[];
+  wallets: { rafaWallet: Wallet | null; monikWallet: Wallet | null };
 }) {
   const router = useRouter();
-  const [wallets, setWallets] = useState<{
-    rafaWallet: Wallet | null;
-    monikWallet: Wallet | null;
-  }>({ rafaWallet: null, monikWallet: null });
 
-  // Fungsi terpusat untuk me-refresh saldo dompet
-  const refreshWallets = useCallback(async () => {
-    const walletData = await getWallets();
-    setWallets(walletData);
-  }, []);
-
+  // Refresh halaman setelah ada aksi dari modal (uang saku / transaksi)
   const refreshData = useCallback(async () => {
-    await refreshWallets();
     router.refresh();
-  }, [router, refreshWallets]);
-
-  useEffect(() => {
-    refreshData();
-  }, [refreshData]);
-
-  // Auto-refresh saldo dompet setiap kali data transaksi dari server berubah
-  // (misal setelah transaksi ditambah/diubah/di hapus) agar wallet tetap sinkron.
-  const prevAllTransactions = useRef(allTransactions);
-  useEffect(() => {
-    if (prevAllTransactions.current !== allTransactions) {
-      prevAllTransactions.current = allTransactions;
-      refreshWallets();
-    }
-  }, [allTransactions, refreshWallets]);
+  }, [router]);
 
   return (
     <div className="space-y-6 sm:space-y-7 relative overflow-x-clip">

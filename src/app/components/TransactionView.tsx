@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import type { Transaction } from '@prisma/client';
-import { getFilteredTransactions, deleteTransaction } from '../actions/transactionActions';
+import { getFilteredTransactions, deleteTransaction, updateTransaction } from '../actions/transactionActions';
 import FilterControls from '../pengeluaran/components/FilterControls';
 import DataView from '../pengeluaran/components/DataView';
 import ConfirmationModal from './ConfirmationModal';
@@ -11,16 +11,18 @@ import ComparisonTable from '../pengeluaran/components/ComparisonTable';
 import ComparisonChart from './ComparisonChart';
 import type { ComparisonData } from '../types';
 import ComparisonDetailModal from '../pengeluaran/components/ComparisonDetailModal';
+import EditTransactionModal from './EditTransactionModal';
 
 export default function TransactionView() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const { replace } = useRouter();
+  const router = useRouter();
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
+  const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
   const [viewMode, setViewMode] = useState<'semua' | 'perbandingan'>('semua');
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [detailData, setDetailData] = useState<{ date: string; transactions: Transaction[] }>({
@@ -113,6 +115,24 @@ export default function TransactionView() {
     await fetchData();
   };
 
+  const handleEditClick = (transaction: Transaction) => {
+    setTransactionToEdit(transaction);
+  };
+
+  const handleConfirmEdit = async () => {
+    if (!transactionToEdit) return;
+    await updateTransaction(transactionToEdit.id, {
+      keterangan: transactionToEdit.keterangan,
+      jumlah: transactionToEdit.jumlah,
+      tipe: transactionToEdit.tipe,
+      sumber: transactionToEdit.sumber,
+      tanggal: new Date(transactionToEdit.tanggal),
+    });
+    setTransactionToEdit(null);
+    await fetchData();
+    router.refresh();
+  };
+
   const handleDetailClick = (date: string) => {
     const dailyTransactions = filteredTransactions.filter((t) => {
       const transactionDate = new Date(t.tanggal).toLocaleDateString('id-ID', {
@@ -134,7 +154,7 @@ export default function TransactionView() {
     } else {
       params.set('tipe', tipe);
     }
-    replace(`${pathname}?${params.toString()}`);
+    router.replace(`${pathname}?${params.toString()}`);
   };
 
   return (
@@ -207,6 +227,7 @@ export default function TransactionView() {
               <DataView
                 data={filteredTransactions}
                 onDelete={handleDeleteClick}
+                onEdit={handleEditClick}
                 totalPengeluaran={totalPengeluaran}
                 totalTabungan={totalTabungan}
               />
@@ -240,6 +261,18 @@ export default function TransactionView() {
           message={`Yakin mau hapus transaksi "${transactionToDelete.keterangan}"? Saldo akan dikembalikan.`}
           onConfirm={handleConfirmDelete}
           onCancel={() => setTransactionToDelete(null)}
+        />
+      )}
+
+      {transactionToEdit && (
+        <EditTransactionModal
+          transaction={transactionToEdit}
+          onClose={() => setTransactionToEdit(null)}
+          onSuccess={() => {
+            setTransactionToEdit(null);
+            fetchData();
+            router.refresh();
+          }}
         />
       )}
 

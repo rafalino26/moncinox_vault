@@ -85,7 +85,6 @@ export default function AddTransactionModal({ isOpen, onClose, onSuccess }: AddT
         // Tutup modal dan refresh data
         onClose();
         onSuccess();
-        router.refresh();
       }
     } catch (err) {
       setErrorMessage('Terjadi kesalahan saat menyimpan transaksi.');

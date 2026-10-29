@@ -1,9 +1,10 @@
 import type { Transaction } from "@prisma/client";
-import { FiTrash2 } from "react-icons/fi";
+import { FiTrash2, FiEdit2 } from "react-icons/fi";
 
-export default function PengeluaranTable({ data = [], onDelete, totalPengeluaran, totalTabungan }: { 
+export default function PengeluaranTable({ data = [], onDelete, onEdit, totalPengeluaran, totalTabungan }: { 
     data: Transaction[], 
     onDelete: (transaction: Transaction) => void,
+    onEdit: (transaction: Transaction) => void,
     totalPengeluaran: number,
     totalTabungan: number,
 }) {
@@ -41,13 +42,22 @@ export default function PengeluaranTable({ data = [], onDelete, totalPengeluaran
                                 {t.tipe === 'pengeluaran' ? '-' : '+'}Rp{t.jumlah.toLocaleString('id-ID')}
                             </p>
                         </div>
-                        <button 
-                            onClick={() => onDelete(t)} 
-                            className="p-2 text-slate-400 hover:text-red-600 active:bg-red-100 rounded-full flex-shrink-0"
-                            aria-label="Hapus transaksi"
-                        >
-                            <FiTrash2 size={18} />
-                        </button>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                            <button 
+                                onClick={() => onEdit(t)} 
+                                className="p-2 text-slate-400 hover:text-[#5c2799] hover:bg-purple-100 rounded-full"
+                                aria-label="Edit transaksi"
+                            >
+                                <FiEdit2 size={18} />
+                            </button>
+                            <button 
+                                onClick={() => onDelete(t)} 
+                                className="p-2 text-slate-400 hover:text-red-600 active:bg-red-100 rounded-full flex-shrink-0"
+                                aria-label="Hapus transaksi"
+                            >
+                                <FiTrash2 size={18} />
+                            </button>
+                        </div>
                     </div>
                 ))}
 
@@ -88,9 +98,14 @@ export default function PengeluaranTable({ data = [], onDelete, totalPengeluaran
                                 <td className="px-6 py-4">{t.sumber === 'Saya' ? 'puskassswww' : 'miskassswww'}</td>
                                 <td className="px-6 py-4 font-bold text-slate-800 break-words">{t.keterangan}</td>
                                 <td className="px-6 py-4 text-right">
-                                    <button onClick={() => onDelete(t)} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-100 rounded-full">
-                                        <FiTrash2 />
-                                    </button>
+                                    <div className="flex items-center gap-1 justify-end">
+                                        <button onClick={() => onEdit(t)} className="p-2 text-slate-500 hover:text-[#5c2799] hover:bg-purple-100 rounded-full" aria-label="Edit transaksi">
+                                            <FiEdit2 />
+                                        </button>
+                                        <button onClick={() => onDelete(t)} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-100 rounded-full">
+                                            <FiTrash2 />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}
