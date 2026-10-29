@@ -2,14 +2,14 @@
 
 import { useRouter } from 'next/navigation'; 
 import { useRef, useState, ChangeEvent } from 'react';
-import { addTransaction } from "@/app/actions/transactionActions"; // Pastikan path ini benar
+import { addTransaction } from "@/app/actions/transactionActions";
 import CustomDropdown from "./CustomDropdown";
 import NotificationPopup from './NotificationPopup';
 import SubmitButton from './SubmitButton';
 
 export default function TransactionForm({ onSuccess }: { onSuccess: () => void }) {
     const formRef = useRef<HTMLFormElement>(null);
-    const inputClass = "w-full p-3 bg-white/50 border border-black/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d9b3ff]";
+    const inputClass = "w-full p-3 bg-white/50 border border-black/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d9b3ff] text-base min-h-[44px]";
     const router = useRouter();
     const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const [displayValue, setDisplayValue] = useState('');
@@ -34,16 +34,14 @@ export default function TransactionForm({ onSuccess }: { onSuccess: () => void }
     const handleFormSubmit = async (formData: FormData) => {
         setStatus(null);
 
-        // --- Logika Baru untuk Checkbox ---
         const isTabungan = formData.get('isTabungan') === 'on';
         formData.set('tipe', isTabungan ? 'tabungan' : 'pengeluaran');
         
-        // Jika ini tabungan dan keterangan kosong, beri nilai default
         if (isTabungan && !formData.get('keterangan')) {
             formData.set('keterangan', 'Tabungan');
         }
         
-        formData.delete('isTabungan'); // Hapus dari data yang akan divalidasi
+        formData.delete('isTabungan');
         formData.set('jumlah', realValue);
         formData.set('sumber', sumber);
 
@@ -73,13 +71,12 @@ export default function TransactionForm({ onSuccess }: { onSuccess: () => void }
         <>
             {status && <NotificationPopup status={status} onClose={() => setStatus(null)} />}
             
-            <div className="bg-gray-50 p-6 sm:p-8 rounded-2xl shadow-lg mb-8">
-                <h2 className="text-xl font-bold text-center text-[#5c2799] mb-6">cihuyy mengisi dataww</h2>
+            <div className="bg-gray-50 p-4 sm:p-8 rounded-2xl shadow-lg mb-6 sm:mb-8">
+                <h2 className="text-lg sm:text-xl font-bold text-center text-[#5c2799] mb-4 sm:mb-6">cihuyy mengisi dataww</h2>
                 
                 <form ref={formRef} action={handleFormSubmit} className="space-y-4">
                     <input type="hidden" name="sumber" value={sumber} />
 
-                    {/* --- Keterangan sekarang selalu terlihat --- */}
                     <div>
                         <label htmlFor="keterangan" className="text-sm font-medium text-[#8451b6] mb-1 block">apaaaa jujungkas</label>
                         <input type="text" id="keterangan" name="keterangan" placeholder="jujungkas" className={inputClass} required />
@@ -102,7 +99,6 @@ export default function TransactionForm({ onSuccess }: { onSuccess: () => void }
                         <CustomDropdown options={sumberOptions} selectedValue={sumber} onSelect={setSumber} />
                     </div>
                     
-                    {/* --- Checkbox Baru --- */}
                     <div className="flex items-center gap-3 pt-2">
                         <input 
                             id="isTabungan"
@@ -110,7 +106,7 @@ export default function TransactionForm({ onSuccess }: { onSuccess: () => void }
                             type="checkbox"
                             className="h-5 w-5 rounded border-gray-300 text-[#743ab7] focus:ring-[#743ab7]"
                         />
-                        <label htmlFor="isTabungan" className="font-medium text-slate-700">
+                        <label htmlFor="isTabungan" className="font-medium text-slate-700 text-sm sm:text-base cursor-pointer">
                             tabungannn jujungkasswwww
                         </label>
                     </div>

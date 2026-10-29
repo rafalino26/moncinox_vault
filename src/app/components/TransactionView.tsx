@@ -91,7 +91,7 @@ export default function TransactionView() {
         .reduce((sum, t) => sum + t.jumlah, 0);
 
     
-    const baseButtonClass = "px-4 py-2 font-semibold transition-colors rounded-t-lg text-sm";
+    const baseButtonClass = "px-3 sm:px-4 py-2 font-semibold transition-colors rounded-t-lg text-xs sm:text-sm";
     const active_ButtonClass = "border-b-2 border-[#743ab7] text-[#743ab7]";
     const inactiveButtonClass = "text-slate-500";
     
