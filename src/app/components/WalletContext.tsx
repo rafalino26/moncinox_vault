@@ -2,17 +2,15 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode, type Dispatch, type SetStateAction } from 'react';
 import type { Wallet, Transaction } from '@prisma/client';
+import { replaceWallet, prependSavedTransaction, type WalletsState } from '../lib/wallet-state';
 
-export type WalletsState = {
-  rafaWallet: Wallet | null;
-  monikWallet: Wallet | null;
-};
+export type { WalletsState } from '../lib/wallet-state';
 
 type WalletContextValue = {
   wallets: WalletsState;
-  applyOptimisticDelta: (person: 'Saya' | 'Pacar_Saya', delta: number) => void;
+  updateSavedWallet: (wallet: Wallet) => void;
   transactions: Transaction[];
-  addOptimisticTransaction: (tx: Transaction) => void;
+  addSavedTransaction: (tx: Transaction, wallet: Wallet) => void;
   setTransactions: Dispatch<SetStateAction<Transaction[]>>;
 };
 
@@ -38,24 +36,18 @@ export function WalletProvider({
     setTransactions(initialTransactions);
   }, [initialTransactions]);
 
-  const applyOptimisticDelta = (person: 'Saya' | 'Pacar_Saya', delta: number) => {
-    setWallets((prev) => {
-      const wallet = person === 'Saya' ? prev.rafaWallet : prev.monikWallet;
-      if (!wallet) return prev;
-      return {
-        ...prev,
-        [person]: { ...wallet, balance: wallet.balance + delta },
-      };
-    });
+  const updateSavedWallet = (wallet: Wallet) => {
+    setWallets(prev => replaceWallet(prev, wallet));
   };
 
-  const addOptimisticTransaction = (tx: Transaction) => {
-    setTransactions((prev) => [tx, ...prev]);
+  const addSavedTransaction = (tx: Transaction, wallet: Wallet) => {
+    updateSavedWallet(wallet);
+    setTransactions(prev => prependSavedTransaction(prev, tx));
   };
 
   return (
     <WalletContext.Provider
-      value={{ wallets, applyOptimisticDelta, transactions, addOptimisticTransaction, setTransactions }}
+      value={{ wallets, updateSavedWallet, transactions, addSavedTransaction, setTransactions }}
     >
       {children}
     </WalletContext.Provider>

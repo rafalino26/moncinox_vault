@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:wallet": "node --test tests/wallet.test.cjs"
   },
   "dependencies": {
     "@prisma/client": "^6.12.0",

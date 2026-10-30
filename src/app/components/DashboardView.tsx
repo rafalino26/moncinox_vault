@@ -1,7 +1,6 @@
 'use client';
 
-import { useCallback, ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { ReactNode } from 'react';
 
 import { useWallet } from './WalletContext';
 import StatCards from './StatCards';
@@ -14,13 +13,7 @@ export default function DashboardView({
 }: {
   charts: ReactNode;
 }) {
-  const router = useRouter();
   const { wallets, transactions } = useWallet();
-
-  // Refresh halaman setelah ada aksi dari modal (uang saku / transaksi)
-  const refreshData = useCallback(async () => {
-    router.refresh();
-  }, [router]);
 
   // History (Riwayat Transaksi Terbaru) dari state lokal (supaya bisa optimistic update)
   const transactionList = (
@@ -30,7 +23,7 @@ export default function DashboardView({
   return (
     <div className="space-y-6 sm:space-y-7 relative overflow-x-clip">
       {/* 1. Kartu Dompet Kembar (Puskasw & Miskasw) Langsung di Atas */}
-      <StatCards wallets={wallets} onDataUpdate={refreshData} />
+      <StatCards wallets={wallets} />
 
       {/* 2. Spending Analysis (Chevron < MODE > & Swipeable dengan Watermark Stitch) */}
       <SpendingAnalysis transactions={transactions} />

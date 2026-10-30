@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useRef, ChangeEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, ChangeEvent } from 'react';
 import Image from 'next/image';
 import { FiX, FiLoader } from 'react-icons/fi';
 import { addTransaction } from '@/app/actions/transactionActions';
@@ -10,12 +9,10 @@ import { useWallet } from './WalletContext';
 interface AddTransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
 }
 
-export default function AddTransactionModal({ isOpen, onClose, onSuccess }: AddTransactionModalProps) {
-  const { applyOptimisticDelta, addOptimisticTransaction } = useWallet();
-  const router = useRouter();
+export default function AddTransactionModal({ isOpen, onClose }: AddTransactionModalProps) {
+  const { addSavedTransaction } = useWallet();
   const [displayValue, setDisplayValue] = useState('');
   const [realValue, setRealValue] = useState('');
   const [tipe, setTipe] = useState<'pengeluaran' | 'tabungan'>('pengeluaran');
@@ -72,23 +69,12 @@ export default function AddTransactionModal({ isOpen, onClose, onSuccess }: AddT
 
       const result = await addTransaction(formData);
 
-      if (result?.error) {
-        setErrorMessage(result.error);
+      if (!result.success) {
+        setErrorMessage(result.error ?? 'Gagal menyimpan transaksi.');
         setIsSubmitting(false);
       } else {
-        // OPTIMISTIC UPDATE: update UI lokal dulu biar terasa cepat,
-        // baru refresh dari server lewat onSuccess() sebagai sinkronisasi.
-        applyOptimisticDelta(sumber, tipe === 'pengeluaran' ? -Number(realValue) : Number(realValue));
-
-        addOptimisticTransaction({
-          id: `optimistic-${Date.now()}`,
-          keterangan: note,
-          jumlah: Number(realValue),
-          tipe,
-          sumber,
-          tanggal: new Date(tanggal),
-          createdAt: new Date(),
-        });
+        // The write response already contains the committed balance and real ID.
+        addSavedTransaction(result.transaction, result.wallet);
 
         // Reset state
         setDisplayValue('');
@@ -98,7 +84,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSuccess }: AddT
         setSumber('Saya');
         setIsSubmitting(false);
         
-        // Tutup modal (data sudah di-update optimis, tidak perlu menunggu refresh dari server)
+        // Wallet, summary, and history update together before closing.
         onClose();
       }
     } catch (err) {

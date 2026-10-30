@@ -15,10 +15,8 @@ const formatRupiah = (amount: number | null | undefined) => {
 
 export default function StatCards({
   wallets,
-  onDataUpdate,
 }: {
   wallets: { rafaWallet: Wallet | null; monikWallet: Wallet | null };
-  onDataUpdate: () => void;
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<'Saya' | 'Pacar_Saya' | null>(null);
@@ -138,7 +136,6 @@ export default function StatCards({
           person={selectedPerson}
           personName={selectedPerson === 'Saya' ? 'Rafa (Puskasw)' : 'Monik (Miskasw)'}
           onClose={() => setIsModalOpen(false)}
-          onSuccess={onDataUpdate}
         />
       )}
     </>

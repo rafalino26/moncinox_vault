@@ -4,24 +4,20 @@ import { FiX, FiLoader } from 'react-icons/fi';
 import { addUangSaku } from '@/app/actions/transactionActions';
 import { useWallet } from './WalletContext';
 import { useState, ChangeEvent } from 'react';
-import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
 interface ModalProps {
   person: 'Saya' | 'Pacar_Saya';
   personName: string;
   onClose: () => void;
-  onSuccess: () => void;
 }
 
 export default function AddUangSakuModal({
   person,
   personName,
   onClose,
-  onSuccess,
 }: ModalProps) {
-  const router = useRouter();
-  const { applyOptimisticDelta } = useWallet();
+  const { updateSavedWallet } = useWallet();
   const [displayValue, setDisplayValue] = useState('');
   const [realValue, setRealValue] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -54,14 +50,13 @@ export default function AddUangSakuModal({
 
       const result = await addUangSaku(formData);
 
-      if (result?.error) {
-        setErrorMessage(result.error);
+      if (!result.success) {
+        setErrorMessage(result.error ?? 'Gagal menambahkan pemasukan.');
         setIsSubmitting(false);
       } else {
-        // OPTIMISTIC UPDATE: tambah saldo lokal dulu biar terasa cepat
-        applyOptimisticDelta(person, Number(realValue));
+        updateSavedWallet(result.wallet);
         setIsSubmitting(false);
-        // Tutup modal (saldo sudah di-update optimis, tidak perlu menunggu refresh)
+        // No second request is needed to display the committed balance.
         onClose();
       }
     } catch (err) {
