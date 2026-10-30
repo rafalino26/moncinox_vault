@@ -138,7 +138,7 @@ test('dashboard chart totals include the last day of the calendar month', () => 
   const stats = getChartStats([...rows, transaction('last', new Date(2026, 9, 31, 23), 50)], now);
   assert.equal(stats.totalPengeluaran, 550);
   assert.equal(stats.totalPemasukan, 400);
-  assert.deepEqual(stats.weeklySpending.map(t => t.id), ['week', 'today', 'last']);
+  assert.deepEqual(stats.weeklySpending.map(t => t.id), ['week', 'today']);
 });
 
 test('editing savings reverses the old deduction and applies the new deduction in the right wallets', async () => {
@@ -147,7 +147,7 @@ test('editing savings reverses the old deduction and applies the new deduction i
     '../lib/prisma': { $transaction: async callback => callback({
       transaction: {
         findUnique: async () => rows[2],
-        update: async ({ data }) => ({ ...rows[2], ...data }),
+        updateMany: async () => ({ count: 1 }),
       },
       wallet: { update: async args => {
         updates.push(args);
@@ -159,7 +159,9 @@ test('editing savings reverses the old deduction and applies the new deduction i
     tanggal: new Date(2026, 9, 30), jumlah: 600, sumber: 'Pacar_Saya', tipe: 'tabungan', keterangan: 'Edited',
   });
   assert.ok(result.success);
-  assert.deepEqual(updates.map(update => update.data.balance), [{ increment: 400 }, { decrement: 600 }]);
-  assert.deepEqual(result.wallets.map(wallet => wallet.person), ['Saya', 'Pacar_Saya']);
+  assert.deepEqual(Object.fromEntries(updates.map(update => [update.where.person, update.data.balance])), {
+    Saya: { increment: 400 }, Pacar_Saya: { increment: -600 },
+  });
+  assert.deepEqual(result.wallets.map(wallet => wallet.person), ['Pacar_Saya', 'Saya']);
   assert.equal(result.transaction.jumlah, 600);
 });

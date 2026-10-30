@@ -13,11 +13,11 @@ export default function ComparisonTable({ data, summary, onDetailClick }: Compar
             {/* Tampilan Mobile: Kartu Perbandingan */}
             <div className="space-y-3 md:hidden">
                 {data.map((row) => (
-                    <div key={row.tanggal} className="bg-white/60 p-3.5 rounded-xl border border-black/5 shadow-sm space-y-2">
+                    <div key={row.dateKey} className="bg-white/60 p-3.5 rounded-xl border border-black/5 shadow-sm space-y-2">
                         <div className="flex items-center justify-between border-b border-black/5 pb-2">
                             <span className="font-semibold text-slate-800 text-sm">{row.tanggal}</span>
                             <button 
-                                onClick={() => onDetailClick(row.tanggal)} 
+                                onClick={() => onDetailClick(row.dateKey)}
                                 className="flex items-center gap-1 text-xs text-blue-600 font-medium px-2 py-1 bg-blue-50 hover:bg-blue-100 rounded-md"
                             >
                                 <FiInfo size={14} />
@@ -73,13 +73,13 @@ export default function ComparisonTable({ data, summary, onDetailClick }: Compar
                     </thead>
                     <tbody>
                         {data.map((row) => (
-                            <tr key={row.tanggal} className="bg-transparent border-b border-black/5">
+                            <tr key={row.dateKey} className="bg-transparent border-b border-black/5">
                                 <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-800">{row.tanggal}</td>
                                 <td className="px-6 py-4 text-right">Rp{row.rafa.toLocaleString('id-ID')}</td>
                                 <td className="px-6 py-4 text-right">Rp{row.monik.toLocaleString('id-ID')}</td>
                                 <td className="px-6 py-4 font-bold text-slate-800 text-right">Rp{(row.rafa + row.monik).toLocaleString('id-ID')}</td>
                                 <td className="px-6 py-4 text-center">
-                                    <button onClick={() => onDetailClick(row.tanggal)} className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-100 rounded-full">
+                                    <button onClick={() => onDetailClick(row.dateKey)} className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-100 rounded-full">
                                         <FiInfo />
                                     </button>
                                 </td>

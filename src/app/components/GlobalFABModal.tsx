@@ -10,10 +10,10 @@ export default function GlobalFABModal() {
   return (
     <>
       <FloatingActionButton onClick={() => setIsOpen(true)} />
-      <AddTransactionModal
+      {isOpen && <AddTransactionModal
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
-      />
+      />}
     </>
   );
 }

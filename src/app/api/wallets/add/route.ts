@@ -1,16 +1,12 @@
 import { NextResponse } from 'next/server';
 import { addUangSaku } from '@/app/actions/transactionActions';
+import { IncomeSchema } from '@/app/lib/validation';
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    // Use 'const' here, not 'final'!
-    const { person, amount } = body; 
-
-    // Validate input
-    if (!person || !amount) {
-        return NextResponse.json({ error: "Data tidak lengkap." }, { status: 400 });
-    }
+    const parsed = IncomeSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) return NextResponse.json({ error: 'Data tidak valid.' }, { status: 400 });
+    const { person, amount } = parsed.data;
 
     // Convert JSON back to FormData to use your existing action
     const formData = new FormData();

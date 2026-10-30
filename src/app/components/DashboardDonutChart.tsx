@@ -12,7 +12,7 @@ interface DonutChartProps {
 
 export default function DashboardDonutChart({ pemasukan, pengeluaran }: DonutChartProps) {
     const data = {
-        labels: ['Pemasukan (Tabungan)', 'Pengeluaran'],
+        labels: ['Tabungan', 'Pengeluaran'],
         datasets: [
             {
                 label: 'Jumlah (Rp)',
@@ -38,7 +38,7 @@ export default function DashboardDonutChart({ pemasukan, pengeluaran }: DonutCha
             },
             title: {
                 display: true,
-                text: 'Perbandingan Pemasukan vs Pengeluaran Bulan Ini',
+                text: 'Perbandingan Tabungan vs Pengeluaran Bulan Ini',
             },
         },
     };

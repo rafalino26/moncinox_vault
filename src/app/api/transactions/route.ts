@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getFilteredTransactions, addTransaction } from '@/app/actions/transactionActions'; // Adjust path if needed
+import { TransactionFilterSchema, TransactionSchema } from '@/app/lib/validation';
 
 // ==========================================
 // GET: Fetch Transaction History
@@ -8,21 +9,17 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     
-    // Default to bulanan (monthly) if no param is provided
-    const rentang = searchParams.get('rentang') || 'bulanan'; 
-    const sumberParam = searchParams.get('sumber');
-    const tipeParam = searchParams.get('tipe');
-
-    // Prepare arguments for your existing Prisma action
-    const args: any = { rentang, urutkan: 'terbaru' };
-    if (sumberParam && sumberParam !== 'semua') args.sumber = sumberParam;
-    if (tipeParam && tipeParam !== 'semua') args.tipe = tipeParam;
-
-    const transactions = await getFilteredTransactions(args);
+    const parsed = TransactionFilterSchema.safeParse(Object.fromEntries(searchParams));
+    if (!parsed.success) return NextResponse.json({ error: 'Filter tidak valid.' }, { status: 400 });
+    const { sumber, tipe, ...filters } = parsed.data;
+    const transactions = await getFilteredTransactions({ ...filters,
+      sumber: sumber === 'semua' ? undefined : sumber,
+      tipe: tipe === 'semua' ? undefined : tipe,
+    });
 
     return NextResponse.json(transactions);
   } catch (error) {
-    return NextResponse.json({ error: "Gagal mengambil data transaksi." }, { status: 500 });
+    return NextResponse.json({ error: "Gagal mengambil data transaksi." }, { status: 503 });
   }
 }
 
@@ -32,7 +29,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     // 1. Parse the incoming JSON from the Flutter app
-    const body = await request.json();
+    const parsed = TransactionSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) return NextResponse.json({ error: 'Data tidak valid.' }, { status: 400 });
+    const body = parsed.data;
     
     // 2. Map the JSON data into a FormData object
     // This allows us to reuse your existing server action without changing it!
@@ -40,7 +39,7 @@ export async function POST(request: Request) {
     
     if (body.keterangan) formData.append('keterangan', body.keterangan);
     if (body.jumlah) formData.append('jumlah', body.jumlah.toString());
-    if (body.tanggal) formData.append('tanggal', body.tanggal);
+    formData.append('tanggal', body.tanggal.toISOString());
     if (body.tipe) formData.append('tipe', body.tipe);
     if (body.sumber) formData.append('sumber', body.sumber); // 'Saya' or 'Pacar_Saya'
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, ChangeEvent } from 'react';
+import { useState, useRef, ChangeEvent } from 'react';
 import Image from 'next/image';
 import { FiX, FiLoader } from 'react-icons/fi';
 import { updateTransaction } from '@/app/actions/transactionActions';
@@ -32,6 +32,7 @@ export default function EditTransactionModal({
     return `${year}-${month}-${day}`;
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitLock = useRef(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleAmountChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -46,6 +47,7 @@ export default function EditTransactionModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitLock.current) return;
     if (!realValue || Number(realValue) <= 0) {
       setErrorMessage('Nominal wajib diisi!');
       return;
@@ -57,6 +59,7 @@ export default function EditTransactionModal({
 
     setErrorMessage('');
     setIsSubmitting(true);
+    submitLock.current = true;
 
     try {
       const result = await updateTransaction(transaction.id, {
@@ -78,6 +81,8 @@ export default function EditTransactionModal({
       }
     } catch (err) {
       setErrorMessage('Terjadi kesalahan saat mengupdate transaksi.');
+    } finally {
+      submitLock.current = false;
       setIsSubmitting(false);
     }
   };
@@ -85,7 +90,7 @@ export default function EditTransactionModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-xs p-0 sm:p-4"
-      onClick={onClose}
+      onClick={() => { if (!submitLock.current) onClose(); }}
     >
       <div
         className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl border border-purple-100 max-h-[92vh] overflow-y-auto transform transition-transform"

@@ -11,6 +11,7 @@ export default function TransactionForm({ onSuccess }: { onSuccess: () => void }
     const formRef = useRef<HTMLFormElement>(null);
     const inputClass = "w-full p-3 bg-white/50 border border-black/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d9b3ff] text-base min-h-[44px]";
     const { addSavedTransaction } = useWallet();
+    const submitLock = useRef(false);
     const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const [displayValue, setDisplayValue] = useState('');
     const [realValue, setRealValue] = useState('');
@@ -32,7 +33,10 @@ export default function TransactionForm({ onSuccess }: { onSuccess: () => void }
     };
 
     const handleFormSubmit = async (formData: FormData) => {
+        if (submitLock.current) return;
+        submitLock.current = true;
         setStatus(null);
+        try {
 
         const isTabungan = formData.get('isTabungan') === 'on';
         formData.set('tipe', isTabungan ? 'tabungan' : 'pengeluaran');
@@ -57,6 +61,11 @@ export default function TransactionForm({ onSuccess }: { onSuccess: () => void }
             setRealValue('');
             setSumber('Saya');
             onSuccess();
+        }
+        } catch {
+            setStatus({ type: 'error', message: 'Gagal menyimpan transaksi. Silakan coba lagi.' });
+        } finally {
+            submitLock.current = false;
         }
     };
 

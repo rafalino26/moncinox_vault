@@ -47,7 +47,7 @@ export function createResource<T>(fetcher: () => Promise<T>, staleMs = 30_000) {
     },
     load,
     revalidateIfLoaded: () => {
-      if (snapshot.data !== undefined) void load();
+      if (snapshot.data !== undefined || snapshot.error !== null) void load(snapshot.error !== null);
     },
     mutate: (update: (previous: T) => T) => {
       revision++;
@@ -62,7 +62,16 @@ export function createResource<T>(fetcher: () => Promise<T>, staleMs = 30_000) {
 export type Resource<T> = ReturnType<typeof createResource<T>>;
 
 export async function fetchJson<T>(url: string): Promise<T> {
-  const response = await fetch(url, { cache: 'no-store' });
-  if (!response.ok) throw new Error('Gagal memuat data. Silakan coba lagi.');
-  return response.json() as Promise<T>;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+  try {
+    const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
+    if (!response.ok) throw new Error('Gagal memuat data. Silakan coba lagi.');
+    return await response.json() as T;
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error('Koneksi terlalu lama. Silakan coba lagi.');
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, ChangeEvent } from 'react';
+import { useState, useRef, ChangeEvent } from 'react';
 import Image from 'next/image';
 import { FiX, FiLoader } from 'react-icons/fi';
 import { addTransaction } from '@/app/actions/transactionActions';
@@ -19,6 +19,7 @@ export default function AddTransactionModal({ isOpen, onClose }: AddTransactionM
   const [sumber, setSumber] = useState<'Saya' | 'Pacar_Saya'>('Saya');
   const [keterangan, setKeterangan] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitLock = useRef(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   const getTodayString = () => {
@@ -45,6 +46,7 @@ export default function AddTransactionModal({ isOpen, onClose }: AddTransactionM
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitLock.current) return;
     if (!realValue || Number(realValue) <= 0) {
       setErrorMessage('Nominal wajib diisi!');
       return;
@@ -58,6 +60,7 @@ export default function AddTransactionModal({ isOpen, onClose }: AddTransactionM
 
     setErrorMessage('');
     setIsSubmitting(true);
+    submitLock.current = true;
 
     try {
       const formData = new FormData();
@@ -89,6 +92,8 @@ export default function AddTransactionModal({ isOpen, onClose }: AddTransactionM
       }
     } catch (err) {
       setErrorMessage('Terjadi kesalahan saat menyimpan transaksi.');
+    } finally {
+      submitLock.current = false;
       setIsSubmitting(false);
     }
   };
@@ -96,7 +101,7 @@ export default function AddTransactionModal({ isOpen, onClose }: AddTransactionM
   return (
     <div 
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-xs p-0 sm:p-4 transition-all"
-      onClick={onClose}
+      onClick={() => { if (!submitLock.current) onClose(); }}
     >
       <div 
         className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl border border-purple-100 max-h-[92vh] overflow-y-auto transform transition-transform"

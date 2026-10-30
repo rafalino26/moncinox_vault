@@ -37,7 +37,7 @@ export default function FilterControls({ onSearchChange }: { onSearchChange: (te
     const currentUrutkan = searchParams.get('urutkan') || 'terbaru';
     const currentSumber = searchParams.get('sumber') || 'semua';
 
-    const renderDropdown = (label: string, options: any[], selectedValue: string, onSelect: (value: string) => void) => (
+    const renderDropdown = (label: string, options: { value: string; label: string }[], selectedValue: string, onSelect: (value: string) => void) => (
         <div>
             <label className="text-xs font-bold uppercase tracking-wider text-purple-900 mb-1.5 block">{label}</label>
             <CustomDropdown options={options} selectedValue={selectedValue} onSelect={onSelect} />
@@ -83,11 +83,11 @@ export default function FilterControls({ onSearchChange }: { onSearchChange: (te
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3 p-4 bg-white/80 rounded-2xl border border-purple-100 shadow-xs">
                     <div>
                         <label className="text-xs font-bold uppercase tracking-wider text-purple-900 mb-1 block">Dari Tanggal</label>
-                        <input type="date" onChange={(e) => handleFilter('from', e.target.value)} defaultValue={searchParams.get('from') || ''} className="w-full p-2.5 bg-slate-50 border border-purple-100 rounded-xl text-base"/>
+                        <input type="date" onChange={(e) => handleFilter('from', e.target.value)} value={searchParams.get('from') || ''} className="w-full p-2.5 bg-slate-50 border border-purple-100 rounded-xl text-base"/>
                     </div>
                     <div>
                         <label className="text-xs font-bold uppercase tracking-wider text-purple-900 mb-1 block">Sampai Tanggal</label>
-                        <input type="date" onChange={(e) => handleFilter('to', e.target.value)} defaultValue={searchParams.get('to') || ''} className="w-full p-2.5 bg-slate-50 border border-purple-100 rounded-xl text-base"/>
+                        <input type="date" onChange={(e) => handleFilter('to', e.target.value)} value={searchParams.get('to') || ''} className="w-full p-2.5 bg-slate-50 border border-purple-100 rounded-xl text-base"/>
                     </div>
                 </div>
             )}

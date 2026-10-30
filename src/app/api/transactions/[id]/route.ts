@@ -32,7 +32,7 @@ export async function PUT(
     const { id: transactionId } = await params;
 
     try {
-        const body = await request.json(); 
+        const body = await request.json().catch(() => null);
 
         const result = await updateTransaction(transactionId, body);
 

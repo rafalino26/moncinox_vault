@@ -3,6 +3,9 @@
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Legend } from 'chart.js';
 import type { Transaction } from '@prisma/client';
+import { useMemo } from 'react';
+import type { ChartOptions } from 'chart.js';
+import { groupTransactionsByDay } from '../../lib/transaction-groups';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
@@ -10,22 +13,10 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 export default function PengeluaranChart({ data = [] }: { data: Transaction[] }) {
     
     // Proses data: kelompokkan berdasarkan tanggal, pisahkan pengeluaran dan tabungan
-    const dataDikelompokkan = data.reduce((acc, curr) => {
-        const tanggal = new Date(curr.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
-        if (!acc[tanggal]) {
-            acc[tanggal] = { pengeluaran: 0, tabungan: 0 };
-        }
-        if (curr.tipe === 'pengeluaran') {
-            acc[tanggal].pengeluaran += curr.jumlah;
-        } else {
-            acc[tanggal].tabungan += curr.jumlah;
-        }
-        return acc;
-    }, {} as Record<string, { pengeluaran: number, tabungan: number }>);
-
-    const labels = Object.keys(dataDikelompokkan).reverse();
-    const pengeluaranValues = Object.values(dataDikelompokkan).map(d => d.pengeluaran).reverse();
-    const tabunganValues = Object.values(dataDikelompokkan).map(d => d.tabungan).reverse();
+    const days = useMemo(() => groupTransactionsByDay(data), [data]);
+    const labels = days.map(day => day.tanggal);
+    const pengeluaranValues = days.map(day => day.pengeluaran);
+    const tabunganValues = days.map(day => day.tabungan);
     
     // Siapkan data dengan DUA dataset: satu untuk pengeluaran, satu untuk tabungan
     const chartData = {
@@ -46,14 +37,14 @@ export default function PengeluaranChart({ data = [] }: { data: Transaction[] })
         ],
     };
 
-    const chartOptions: any = {
+    const chartOptions: ChartOptions<'bar'> = {
         responsive: true,
         plugins: {
             legend: { position: 'top' as const },
             title: { display: false },
             tooltip: {
                 callbacks: {
-                    label: function(context: any) {
+                    label: function(context) {
                         let label = context.dataset.label || '';
                         if (label) {
                             label += ': ';
@@ -73,8 +64,8 @@ export default function PengeluaranChart({ data = [] }: { data: Transaction[] })
                 stacked: true,
                 beginAtZero: true,
                 ticks: {
-                    callback: function(value: any) {
-                        return 'Rp' + new Intl.NumberFormat('id-ID').format(value);
+                    callback: function(value) {
+                        return 'Rp' + new Intl.NumberFormat('id-ID').format(Number(value));
                     }
                 }
             }

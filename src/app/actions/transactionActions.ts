@@ -1,38 +1,29 @@
 'use server';
 import prisma from '../lib/prisma';
-import { z } from 'zod';
-import type { Pemasukan, Transaction, Wallet } from '@prisma/client';
+import type { Pemasukan, Prisma, Transaction, Wallet } from '@prisma/client';
+import { IncomeSchema, RecordIdSchema, TransactionSchema, TransactionFilterSchema } from '../lib/validation';
+import { parseCalendarDate } from '../lib/dates';
 
 type MutationResult<T> =
     | ({ success: string; error?: undefined } & T)
     | { success?: undefined; error: string };
 
+class TransactionConflict extends Error {}
+
 export async function deleteTransaction(transactionId: string): Promise<MutationResult<{ wallet: Wallet }>> {
-    if (!transactionId) {
+    if (!RecordIdSchema.safeParse(transactionId).success) {
         return { error: "ID transaksi tidak valid." };
     }
+    transactionId = transactionId.trim();
 
     try {
         // Gunakan transaksi database untuk memastikan kedua operasi berhasil atau gagal bersamaan
         const saved = await prisma.$transaction(async (tx) => {
-            // 1. Cari transaksi yang akan dihapus untuk mendapatkan jumlah dan sumbernya
-            const transactionToDelete = await tx.transaction.findUnique({
-                where: { id: transactionId },
-            });
-
-            if (!transactionToDelete) {
-                throw new Error("Transaksi tidak ditemukan.");
-            }
-
-            // 2. Kembalikan saldo ke dompet yang sesuai
+            // Lock/remove the record before changing wallets, matching edit lock order.
+            const deleted = await tx.transaction.delete({ where: { id: transactionId } });
             const wallet = await tx.wallet.update({
-                where: { person: transactionToDelete.sumber },
-                data: { balance: { increment: transactionToDelete.jumlah } },
-            });
-
-            // 3. Hapus transaksi itu sendiri
-            const deleted = await tx.transaction.delete({
-                where: { id: transactionId },
+                where: { person: deleted.sumber },
+                data: { balance: { increment: deleted.jumlah } },
             });
 
             return { deleted, wallet };
@@ -64,10 +55,9 @@ export async function getWallets() {
 }
 
 export async function addUangSaku(formData: FormData): Promise<MutationResult<{ wallet: Wallet; income: Pemasukan }>> {
-    const person = formData.get('person') as 'Saya' | 'Pacar_Saya';
-    const amount = Number(formData.get('amount'));
-
-    if ((person !== 'Saya' && person !== 'Pacar_Saya') || !Number.isFinite(amount) || amount <= 0) return { error: "Jumlah tidak valid." };
+    const validated = IncomeSchema.safeParse(Object.fromEntries(formData.entries()));
+    if (!validated.success) return { error: "Jumlah tidak valid." };
+    const { person, amount } = validated.data;
 
     try {
         const saved = await prisma.$transaction(async (tx) => {
@@ -84,21 +74,17 @@ export async function addUangSaku(formData: FormData): Promise<MutationResult<{ 
 
 // BARU: Fungsi untuk mengambil riwayat pemasukan
 export async function getPemasukanHistory() {
-    try {
-        return await prisma.pemasukan.findMany({ orderBy: { createdAt: 'desc' } });
-    } catch (error) { return [] }
+    return prisma.pemasukan.findMany({ orderBy: { createdAt: 'desc' } });
 }
 
 // BARU: Fungsi untuk menghapus pemasukan (dan mengembalikan saldo)
 export async function deletePemasukan(pemasukanId: string): Promise<MutationResult<{ wallet: Wallet }>> {
+    if (!RecordIdSchema.safeParse(pemasukanId).success) return { error: 'ID pemasukan tidak valid.' };
+    pemasukanId = pemasukanId.trim();
     try {
         const wallet = await prisma.$transaction(async (tx) => {
-            const pemasukanToDelete = await tx.pemasukan.findUnique({ where: { id: pemasukanId } });
-            if (!pemasukanToDelete) throw new Error("Pemasukan tidak ditemukan.");
-            // Kurangi saldo dompet
+            const pemasukanToDelete = await tx.pemasukan.delete({ where: { id: pemasukanId } });
             const updatedWallet = await tx.wallet.update({ where: { person: pemasukanToDelete.sumber }, data: { balance: { decrement: pemasukanToDelete.jumlah } } });
-            // Hapus catatan pemasukan
-            await tx.pemasukan.delete({ where: { id: pemasukanId } });
             return updatedWallet;
         });
         return { success: "Pemasukan berhasil dihapus.", wallet };
@@ -106,17 +92,6 @@ export async function deletePemasukan(pemasukanId: string): Promise<MutationResu
 }
 
 
-
-// ... (skema Zod dan fungsi addTransaction tetap sama)
-const TransactionSchema = z.object({
-    keterangan: z.string().min(1, "Keterangan wajib diisi."),
-    jumlah: z.coerce.number().positive(),
-    tanggal: z.union([z.string(), z.date()])
-        .transform(value => value instanceof Date ? value.toISOString() : value)
-        .refine(value => !Number.isNaN(new Date(value).getTime()), 'Tanggal tidak valid.'),
-    tipe: z.enum(['pengeluaran', 'tabungan']),
-    sumber: z.enum(['Saya', 'Pacar_Saya']),
-});
 
 
 
@@ -133,7 +108,7 @@ export async function addTransaction(formData: FormData): Promise<MutationResult
             const transaction = await tx.transaction.create({
                 data: {
                     ...validatedFields.data,
-                    tanggal: new Date(validatedFields.data.tanggal),
+                    tanggal: validatedFields.data.tanggal,
                     keterangan: validatedFields.data.keterangan ?? (validatedFields.data.tipe === 'tabungan' ? 'Tabungan' : ''),
                 },
             });
@@ -149,19 +124,12 @@ export async function addTransaction(formData: FormData): Promise<MutationResult
         return { success: "Transaksi berhasil ditambahkan!", ...saved };
     } catch (error) {
         console.error(error);
-        return { error: "Gagal menyimpan transaksi. Pastikan sisa uang mencukupi." };
+        return { error: "Gagal menyimpan transaksi. Silakan coba lagi." };
     }
 }
 
 
-export async function getFilteredTransactions({
-    tipe,
-    rentang, 
-    urutkan,
-    sumber,
-    from, // <-- Parameter baru untuk tanggal mulai
-    to,   // <-- Parameter baru untuk tanggal akhir
-}: {
+export async function getFilteredTransactions(filters: {
     tipe?: 'pengeluaran' | 'tabungan';
     rentang: string; 
     urutkan: string;
@@ -169,15 +137,16 @@ export async function getFilteredTransactions({
     from?: string;
     to?: string;
 }) {
-    let whereClause: any = {};
-    if (tipe) whereClause.tipe = tipe;
+    const { tipe, rentang, urutkan, sumber, from, to } = TransactionFilterSchema.parse(filters);
+    const whereClause: Prisma.TransactionWhereInput = {};
+    if (tipe && tipe !== 'semua') whereClause.tipe = tipe;
 
     // --- LOGIKA BARU UNTUK RENTANG TANGGAL ---
     if (rentang === 'custom' && from && to) {
-        const startDate = new Date(from);
-        const endDate = new Date(to);
-        endDate.setHours(23, 59, 59, 999); // Pastikan mencakup hingga akhir hari
-        whereClause.tanggal = { gte: startDate, lte: endDate };
+        const startDate = parseCalendarDate(from)!;
+        const endDate = parseCalendarDate(to)!;
+        endDate.setDate(endDate.getDate() + 1);
+        whereClause.tanggal = { gte: startDate, lt: endDate };
     } else if (rentang !== 'semua') {
         const now = new Date();
         let tanggalMulai = new Date();
@@ -188,24 +157,23 @@ export async function getFilteredTransactions({
             const jarakKeSenin = hariIni === 0 ? 6 : hariIni - 1;
             tanggalMulai.setDate(now.getDate() - jarakKeSenin);
             tanggalMulai.setHours(0, 0, 0, 0);
-        } else if (rentang === 'bulanan') { // <-- Logika baru: 30 hari terakhir
-            tanggalMulai.setDate(now.getDate() - 30);
+        } else if (rentang === 'bulanan') {
+            tanggalMulai.setDate(now.getDate() - 29);
+            tanggalMulai.setHours(0, 0, 0, 0);
         }
         
-        if(rentang !== 'custom') whereClause.tanggal = { gte: tanggalMulai };
+        if(rentang !== 'custom') whereClause.tanggal = { gte: tanggalMulai,
+            lt: new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1) };
     }
     // Jika rentang === 'semua', kita tidak menambahkan filter tanggal sama sekali.
 
-    if (sumber) whereClause.sumber = sumber;
+    if (sumber && sumber !== 'semua') whereClause.sumber = sumber;
 
-    let orderBy: any = { createdAt: 'desc' };
+    let orderBy: Prisma.TransactionOrderByWithRelationInput = { createdAt: 'desc' };
     if (urutkan === 'terbesar') orderBy = { jumlah: 'desc' };
     else if (urutkan === 'terkecil') orderBy = { jumlah: 'asc' };
     
-    try {
-        const transactions = await prisma.transaction.findMany({ where: whereClause, orderBy: orderBy });
-        return transactions;
-    } catch (error) { return [] }
+    return prisma.transaction.findMany({ where: whereClause, orderBy });
 }
 
 
@@ -213,36 +181,34 @@ export async function getDashboardStats() {
     const now = new Date();
     // Tentukan awal dan akhir bulan ini
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(now.getDate() - 7);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const sevenDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
 
     try {
         // 1. Hitung total pengeluaran bulan ini
-        const totalPengeluaranResult = await prisma.transaction.aggregate({
+        const pengeluaranQuery = prisma.transaction.aggregate({
             _sum: { jumlah: true },
             where: {
                 tipe: 'pengeluaran',
-                tanggal: { gte: startOfMonth, lte: endOfMonth },
+                tanggal: { gte: startOfMonth, lt: endOfMonth },
             },
         });
-        const totalPengeluaran = totalPengeluaranResult._sum.jumlah || 0;
 
         // 2. Hitung total pemasukan (tabungan) bulan ini
-        const totalPemasukanResult = await prisma.transaction.aggregate({
+        const pemasukanQuery = prisma.transaction.aggregate({
             _sum: { jumlah: true },
             where: {
                 tipe: 'tabungan',
-                tanggal: { gte: startOfMonth, lte: endOfMonth },
+                tanggal: { gte: startOfMonth, lt: endOfMonth },
             },
         });
-        const totalPemasukan = totalPemasukanResult._sum.jumlah || 0;
 
         // 3. Cari pengeluaran terbesar bulan ini
-        const pengeluaranTerbesar = await prisma.transaction.findFirst({
+        const terbesarQuery = prisma.transaction.findFirst({
             where: {
                 tipe: 'pengeluaran',
-                tanggal: { gte: startOfMonth, lte: endOfMonth },
+                tanggal: { gte: startOfMonth, lt: endOfMonth },
             },
             orderBy: {
                 jumlah: 'desc',
@@ -250,13 +216,13 @@ export async function getDashboardStats() {
         });
 
         // 4. Hitung arus kas bersih
-        const arusKas = totalPemasukan - totalPengeluaran;
 
-        const weeklySpending = await prisma.transaction.findMany({
+        const weeklyQuery = prisma.transaction.findMany({
             where: {
                 tipe: 'pengeluaran',
                 tanggal: {
                     gte: sevenDaysAgo,
+                    lt: tomorrow,
                 },
             },
             orderBy: {
@@ -264,6 +230,12 @@ export async function getDashboardStats() {
             },
         });
 
+        const [totalPengeluaranResult, totalPemasukanResult, pengeluaranTerbesar, weeklySpending] = await Promise.all([
+            pengeluaranQuery, pemasukanQuery, terbesarQuery, weeklyQuery,
+        ]);
+        const totalPengeluaran = totalPengeluaranResult._sum.jumlah ?? 0;
+        const totalPemasukan = totalPemasukanResult._sum.jumlah ?? 0;
+        const arusKas = totalPemasukan - totalPengeluaran;
         return {
             totalPemasukan,
             totalPengeluaran,
@@ -273,8 +245,7 @@ export async function getDashboardStats() {
         };
     } catch (error) {
         console.error("Gagal mengambil statistik:", error);
-        // Kembalikan nilai default jika ada error
-        return { totalPemasukan: 0, totalPengeluaran: 0, arusKas: 0, pengeluaranTerbesar: null, weeklySpending: [] };
+        throw error;
     }
 }
 
@@ -282,9 +253,10 @@ export async function getDashboardStats() {
 export async function updateTransaction(transactionId: string, updatedData: unknown): Promise<MutationResult<{ transaction: Transaction; wallets: Wallet[] }>> {
     const validated = TransactionSchema.safeParse(updatedData);
     // Existing web and Android clients may send a Date or an ISO string.
-    if (!validated.success || !transactionId) {
+    if (!validated.success || !RecordIdSchema.safeParse(transactionId).success) {
         return { error: 'Data tidak valid.' };
     }
+    transactionId = transactionId.trim();
     const data = validated.data;
     try {
         const saved = await prisma.$transaction(async (tx) => {
@@ -292,35 +264,28 @@ export async function updateTransaction(transactionId: string, updatedData: unkn
             const oldTx = await tx.transaction.findUnique({ where: { id: transactionId } });
             if (!oldTx) throw new Error("Transaction not found");
 
-            // Both expense and savings deduct from the spending wallet on creation.
-            const oldWallet = await tx.wallet.update({
-                where: { person: oldTx.sumber },
-                data: {
-                    balance: { increment: oldTx.jumlah }
-                }
+            // Compare-and-set: concurrent edits must not both reverse the same old amount.
+            const changed = await tx.transaction.updateMany({
+                where: { id: transactionId, jumlah: oldTx.jumlah, sumber: oldTx.sumber,
+                    tipe: oldTx.tipe, tanggal: oldTx.tanggal, keterangan: oldTx.keterangan },
+                data,
             });
+            if (changed.count !== 1) throw new TransactionConflict('Transaksi sudah berubah. Muat ulang data sebelum mencoba lagi.');
 
-            // 3. APPLY the new math to the new wallet
-            const newWallet = await tx.wallet.update({
-                where: { person: data.sumber },
-                data: {
-                    balance: { decrement: data.jumlah }
-                }
-            });
-
-            // 4. UPDATE the transaction record
-            const transaction = await tx.transaction.update({
-                where: { id: transactionId },
-                data: {
-                    ...data,
-                    tanggal: new Date(data.tanggal),
-                }
-            });
-            return { transaction, wallets: oldWallet.person === newWallet.person ? [newWallet] : [oldWallet, newWallet] };
+            // Use the same wallet lock order for transfers in either direction.
+            const deltas = new Map<string, number>();
+            deltas.set(oldTx.sumber, oldTx.jumlah);
+            deltas.set(data.sumber, (deltas.get(data.sumber) ?? 0) - data.jumlah);
+            const wallets: Wallet[] = [];
+            for (const person of [...deltas.keys()].sort()) {
+                wallets.push(await tx.wallet.update({ where: { person }, data: { balance: { increment: deltas.get(person)! } } }));
+            }
+            return { transaction: { ...oldTx, ...data }, wallets };
         });
 
         return { success: 'Transaksi berhasil diperbarui.', ...saved };
     } catch (error) {
+        if (error instanceof TransactionConflict) return { error: error.message };
         console.error("Update failed:", error);
         return { error: "Failed to update transaction" };
     }

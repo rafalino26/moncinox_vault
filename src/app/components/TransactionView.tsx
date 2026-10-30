@@ -7,12 +7,13 @@ import type { Transaction } from '@prisma/client';
 import { deleteTransaction } from '../actions/transactionActions';
 import { useTransactionsData, useWallet } from './WalletContext';
 import { filterTransactions } from '../lib/transaction-filters';
+import { groupTransactionsByDay } from '../lib/transaction-groups';
+import { calendarDateKey, calendarDateLabel } from '../lib/dates';
 import DataStatus from './DataStatus';
 import FilterControls from '../pengeluaran/components/FilterControls';
 import DataView from '../pengeluaran/components/DataView';
 import ConfirmationModal from './ConfirmationModal';
 import ComparisonTable from '../pengeluaran/components/ComparisonTable';
-import type { ComparisonData } from '../types';
 import ComparisonDetailModal from '../pengeluaran/components/ComparisonDetailModal';
 import EditTransactionModal from './EditTransactionModal';
 
@@ -24,19 +25,15 @@ export default function TransactionView() {
   const transactionData = useTransactionsData();
   const { removeSavedTransaction } = useWallet();
   const [mutationError, setMutationError] = useState<string | null>(null);
-  const filterKey = searchParams.toString();
+  const filterKey = JSON.stringify(['rentang', 'urutkan', 'sumber', 'tipe', 'from', 'to'].map(key => [key, searchParams.get(key)]).filter(([, value]) => value !== null));
   const transactions = useMemo(() => {
-    return filterTransactions(transactionData.data ?? [], Object.fromEntries(new URLSearchParams(filterKey)));
+    return filterTransactions(transactionData.data ?? [], Object.fromEntries(JSON.parse(filterKey)));
   }, [transactionData.data, filterKey]);
   const [query, setQuery] = useState('');
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
   const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
   const [viewMode, setViewMode] = useState<'semua' | 'perbandingan'>('semua');
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [detailData, setDetailData] = useState<{ date: string; transactions: Transaction[] }>({
-    date: '',
-    transactions: [],
-  });
+  const [detailDate, setDetailDate] = useState<string | null>(null);
   const activeTipe = (searchParams.get('tipe') as 'pengeluaran' | 'tabungan' | null) || 'semua';
 
   const filteredTransactions = useMemo(() => {
@@ -63,22 +60,7 @@ export default function TransactionView() {
     );
   }, [filteredTransactions]);
 
-  const comparisonData = useMemo((): ComparisonData[] => {
-    const groupedData = filteredTransactions.reduce((acc, t) => {
-      const tanggal = new Date(t.tanggal).toLocaleDateString('id-ID', {
-        weekday: 'short',
-        day: '2-digit',
-        month: 'short',
-      });
-      if (!acc[tanggal]) acc[tanggal] = { tanggal, rafa: 0, monik: 0 };
-      if (t.sumber === 'Saya') acc[tanggal].rafa += t.jumlah;
-      else if (t.sumber === 'Pacar_Saya') acc[tanggal].monik += t.jumlah;
-      return acc;
-    }, {} as Record<string, ComparisonData>);
-    return Object.values(groupedData).sort(
-      (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
-    );
-  }, [filteredTransactions]);
+  const comparisonData = useMemo(() => groupTransactionsByDay(filteredTransactions).reverse(), [filteredTransactions]);
 
   const totalPengeluaran = filteredTransactions
     .filter((t) => t.tipe === 'pengeluaran')
@@ -112,17 +94,7 @@ export default function TransactionView() {
   };
 
   const handleDetailClick = (date: string) => {
-    const dailyTransactions = filteredTransactions.filter((t) => {
-      const transactionDate = new Date(t.tanggal).toLocaleDateString('id-ID', {
-        weekday: 'short',
-        day: '2-digit',
-        month: 'short',
-      });
-      return transactionDate === date;
-    });
-
-    setDetailData({ date, transactions: dailyTransactions });
-    setIsDetailModalOpen(true);
+    setDetailDate(date);
   };
 
   const handleTipeChange = (tipe: 'semua' | 'pengeluaran' | 'tabungan') => {
@@ -252,11 +224,11 @@ export default function TransactionView() {
         />
       )}
 
-      {isDetailModalOpen && (
+      {detailDate && (
         <ComparisonDetailModal
-          date={detailData.date}
-          transactions={detailData.transactions}
-          onClose={() => setIsDetailModalOpen(false)}
+          date={calendarDateLabel(detailDate)}
+          transactions={filteredTransactions.filter(transaction => calendarDateKey(transaction.tanggal) === detailDate)}
+          onClose={() => setDetailDate(null)}
         />
       )}
     </>

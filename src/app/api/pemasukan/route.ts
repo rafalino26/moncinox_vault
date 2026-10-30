@@ -6,6 +6,6 @@ export async function GET() {
         const history = await getPemasukanHistory();
         return NextResponse.json(history);
     } catch (error) {
-        return NextResponse.json({ error: "Failed to fetch history" }, { status: 500 });
+        return NextResponse.json({ error: "Failed to fetch history" }, { status: 503 });
     }
 }

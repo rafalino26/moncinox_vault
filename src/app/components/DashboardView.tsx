@@ -7,6 +7,7 @@ import StatCards from './StatCards';
 import CollapsibleSection from './CollapsibleSection';
 import SpendingAnalysis from './SpendingAnalysis';
 import TransactionList from './TransactionList';
+import { filterTransactions } from '../lib/transaction-filters';
 
 const DashboardCharts = dynamic(() => import('./DashboardCharts'), {
   loading: () => <p className="p-4 text-sm text-purple-700">Memuat grafik...</p>,
@@ -20,7 +21,7 @@ export default function DashboardView() {
 
   // History (Riwayat Transaksi Terbaru) dari state lokal (supaya bisa optimistic update)
   const transactionList = (
-    <TransactionList transactions={transactions.slice(0, 10)} />
+    <TransactionList transactions={filterTransactions(transactions, { rentang: 'bulanan' }).slice(0, 10)} />
   );
 
   return (

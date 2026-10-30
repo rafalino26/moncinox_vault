@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import type { Transaction } from '@prisma/client';
+import { getSpendingSummary } from '../lib/transaction-filters';
 import Image from 'next/image';
 import { 
   FiChevronLeft, 
@@ -82,49 +83,8 @@ export default function SpendingAnalysis({ transactions }: SpendingAnalysisProps
     `Rp ${new Intl.NumberFormat('id-ID').format(amount)}`;
 
   // Filter transaksi
-  const stats = useMemo(() => {
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-    const filtered = transactions.filter((t) => {
-      if (selectedPerson !== 'all' && t.sumber !== selectedPerson) {
-        return false;
-      }
-
-      const txDate = new Date(t.tanggal);
-      if (currentMode.key === 'daily') {
-        return txDate >= todayStart;
-      }
-      if (currentMode.key === 'weekly') {
-        return txDate >= sevenDaysAgo;
-      }
-      if (currentMode.key === 'monthly') {
-        return txDate >= thirtyDaysAgo;
-      }
-      return true;
-    });
-
-    let expense = 0;
-    let income = 0;
-
-    for (const t of filtered) {
-      if (t.tipe === 'pengeluaran') {
-        expense += t.jumlah;
-      } else if (t.tipe === 'tabungan') {
-        income += t.jumlah;
-      }
-    }
-
-    const totalArusKas = expense + income;
-
-    return {
-      expense,
-      income,
-      totalArusKas,
-    };
-  }, [transactions, selectedPerson, currentMode.key]);
+  const stats = useMemo(() => getSpendingSummary(transactions, selectedPerson, currentMode.key),
+    [transactions, selectedPerson, currentMode.key]);
 
   return (
     <div className="space-y-4">
@@ -245,7 +205,7 @@ export default function SpendingAnalysis({ transactions }: SpendingAnalysisProps
             <FiArrowDown size={18} className="stroke-[2.5]" />
           </div>
           <div className="mt-3">
-            <p className="text-xs font-semibold text-slate-400">Income</p>
+            <p className="text-xs font-semibold text-slate-400">Tabungan</p>
             <p className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight truncate mt-0.5">
               {isAmountHidden ? '••••••' : formatRupiah(stats.income)}
             </p>

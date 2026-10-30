@@ -1,7 +1,7 @@
 'use client';
 
 import { FiAlertTriangle, FiLoader } from "react-icons/fi";
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 interface ModalProps {
     title: string;
@@ -12,11 +12,22 @@ interface ModalProps {
 
 export default function ConfirmationModal({ title, message, onConfirm, onCancel }: ModalProps) {
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const submitLock = useRef(false);
 
     const handleConfirm = async () => {
+        if (submitLock.current) return;
+        submitLock.current = true;
+        setError(null);
         setIsLoading(true);
-        await onConfirm();
-        // isLoading akan tetap true karena komponen akan ditutup setelahnya
+        try {
+            await onConfirm();
+        } catch {
+            setError('Proses gagal. Silakan coba lagi.');
+        } finally {
+            submitLock.current = false;
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -27,6 +38,7 @@ export default function ConfirmationModal({ title, message, onConfirm, onCancel 
                 </div>
                 <h3 className="text-lg font-bold text-slate-800">{title}</h3>
                 <p className="text-sm text-slate-600">{message}</p>
+                {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
                 <div className="flex gap-3 pt-2">
                     <button onClick={onCancel} disabled={isLoading} className="w-full p-2 text-slate-700 bg-slate-200 rounded-lg font-semibold hover:bg-slate-300">
                         Batal

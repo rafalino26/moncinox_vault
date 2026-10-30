@@ -3,7 +3,7 @@
 import { FiX, FiLoader } from 'react-icons/fi';
 import { addUangSaku } from '@/app/actions/transactionActions';
 import { useWallet } from './WalletContext';
-import { useState, ChangeEvent } from 'react';
+import { useState, useRef, ChangeEvent } from 'react';
 import Image from 'next/image';
 
 interface ModalProps {
@@ -21,6 +21,7 @@ export default function AddUangSakuModal({
   const [displayValue, setDisplayValue] = useState('');
   const [realValue, setRealValue] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitLock = useRef(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleAmountChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -35,12 +36,14 @@ export default function AddUangSakuModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitLock.current) return;
     if (!realValue || Number(realValue) <= 0) {
       setErrorMessage('Nominal wajib diisi!');
       return;
     }
 
     setIsSubmitting(true);
+    submitLock.current = true;
     setErrorMessage('');
 
     try {
@@ -61,6 +64,8 @@ export default function AddUangSakuModal({
       }
     } catch (err) {
       setErrorMessage('Gagal menambahkan pemasukan.');
+    } finally {
+      submitLock.current = false;
       setIsSubmitting(false);
     }
   };
@@ -68,7 +73,7 @@ export default function AddUangSakuModal({
   return (
     <div
       className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex justify-center items-end sm:items-center p-0 sm:p-4"
-      onClick={onClose}
+      onClick={() => { if (!submitLock.current) onClose(); }}
     >
       <div
         className="bg-white rounded-t-3xl sm:rounded-3xl p-6 w-full max-w-sm border border-purple-100 shadow-2xl space-y-4"
