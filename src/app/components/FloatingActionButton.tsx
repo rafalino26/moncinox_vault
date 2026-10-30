@@ -9,7 +9,7 @@ interface FABProps {
 
 export default function FloatingActionButton({ onClick }: FABProps) {
   return (
-    <div className="fixed bottom-[5.5rem] right-4 sm:bottom-8 sm:right-8 z-40 group">
+    <div className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom,0px))] right-4 md:bottom-8 sm:right-8 z-40 group">
       {/* Stitch sticker kecil di atas FAB */}
       <div className="absolute -top-7 -right-1 pointer-events-none transition-transform duration-300 group-hover:scale-110 group-hover:-translate-y-1">
         <Image

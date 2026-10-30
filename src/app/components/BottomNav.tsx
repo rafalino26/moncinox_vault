@@ -13,23 +13,19 @@ const navItems = [
 export default function BottomNav() {
   const pathname = usePathname();
   const activeIndex = navItems.findIndex((item) => pathname === item.href);
-  const safeIndex = Math.max(activeIndex, 0);
 
   return (
-    <div className="md:hidden fixed bottom-6 inset-x-0 mx-auto w-auto max-w-[285px] z-40 pointer-events-none px-3">
-      {/* Liquid Glass Floating Capsule (Ala WhatsApp iOS - Pas & Mengambang) */}
-      <nav className="pointer-events-auto relative bg-[#181028]/85 backdrop-blur-2xl border border-white/20 rounded-full shadow-[0_12px_35px_rgba(0,0,0,0.38)] p-1.5 flex items-center justify-between">
-        {/* Sliding Active Pill */}
-        <span
+    <div className="glass-nav-dock md:hidden">
+      <nav aria-label="Navigasi utama" className="glass-nav glass-nav-mobile">
+        {activeIndex >= 0 && <span
           aria-hidden="true"
-          className="absolute top-0 bottom-0 left-0 rounded-full bg-white/20 transition-transform duration-300 ease-out pointer-events-none"
+          className="glass-nav-indicator"
           style={{
-            width: `calc(100% / ${navItems.length})`,
-            transform: `translateX(${safeIndex * 100}%)`,
+            transform: `translateX(${activeIndex * 100}%)`,
           }}
-        />
+        />}
 
-        {navItems.map((item, index) => {
+        {navItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
 
@@ -37,14 +33,11 @@ export default function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
-              className={`relative z-10 flex-1 py-1.5 px-3 rounded-full flex flex-col items-center justify-center transition-colors duration-300 ${
-                isActive
-                  ? 'text-white font-black'
-                  : 'text-white/60 hover:text-white font-semibold'
-              }`}
+              aria-current={isActive ? 'page' : undefined}
+              className="glass-nav-link flex-col gap-1"
             >
-              <Icon size={18} className={isActive ? 'stroke-[2.5]' : 'stroke-[2]'} />
-              <span className="text-[10px] tracking-tight mt-0.5 leading-none font-bold">
+              <Icon aria-hidden="true" size={23} className={isActive ? 'stroke-[2.3]' : 'stroke-[1.8]'} />
+              <span className="text-[11px] leading-tight font-semibold tracking-tight">
                 {item.label}
               </span>
             </Link>

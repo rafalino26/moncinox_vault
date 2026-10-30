@@ -39,7 +39,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className={`${inter.className} bg-gradient-to-b from-[#f5efff] via-[#ebe0fa] to-[#e2d0f7] min-h-screen overflow-x-hidden text-slate-800 antialiased`}>
         <WalletProvider initialWallets={wallets} initialTransactions={allTransactions}>
           <Navbar />
-          <main className="max-w-5xl mx-auto p-3 sm:p-6 lg:p-8 pb-28 sm:pb-16 overflow-x-hidden">
+          <main className="max-w-5xl mx-auto p-3 sm:p-6 lg:p-8 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:pb-16 overflow-x-hidden">
             {children}
           </main>
 

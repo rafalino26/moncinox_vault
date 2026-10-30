@@ -1,2 +1,103 @@
 @import "tailwindcss";
 
+.glass-nav-dock {
+  position: fixed;
+  inset-inline: 0;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  width: min(344px, calc(100% - 32px));
+  margin-inline: auto;
+  z-index: 40;
+}
+
+.glass-nav {
+  position: relative;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 999px;
+  /* Opaque fallback for browsers without backdrop-filter. */
+  background: rgb(247, 243, 252);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    inset 0 -1px 0 rgba(92, 39, 153, 0.06),
+    0 8px 24px rgba(30, 18, 46, 0.1);
+}
+
+/* A static highlight adds depth without another filtered layer. */
+.glass-nav::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(125deg, rgba(255, 255, 255, 0.24), transparent 42%, rgba(255, 255, 255, 0.04));
+}
+
+.glass-nav-mobile {
+  display: grid;
+  height: 70px;
+}
+
+.glass-nav-desktop {
+  width: 390px;
+  height: 46px;
+  padding: 4px;
+}
+
+.glass-nav-indicator {
+  position: absolute;
+  inset-block: 6px;
+  left: 6px;
+  width: calc((100% - 12px) / 3);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.48);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.75),
+    0 2px 6px rgba(70, 37, 105, 0.06);
+  pointer-events: none;
+  transition: transform 180ms ease-out;
+}
+
+.glass-nav-desktop .glass-nav-indicator {
+  inset-block: 4px;
+  left: 4px;
+  width: calc((100% - 8px) / 3);
+}
+
+.glass-nav-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  border-radius: 999px;
+  color: #514461;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 150ms ease-out;
+}
+
+.glass-nav-link[aria-current="page"],
+.glass-nav-link:hover {
+  color: #4b1d83;
+}
+
+.glass-nav-link:focus-visible {
+  outline: 2px solid #743ab7;
+  outline-offset: -3px;
+}
+
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-nav {
+    background: rgba(255, 255, 255, 0.18);
+    -webkit-backdrop-filter: blur(14px) saturate(125%);
+    backdrop-filter: blur(14px) saturate(125%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-nav-indicator,
+  .glass-nav-link {
+    transition: none;
+  }
+}
+
