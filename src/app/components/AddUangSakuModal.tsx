@@ -61,8 +61,8 @@ export default function AddUangSakuModal({
         // OPTIMISTIC UPDATE: tambah saldo lokal dulu biar terasa cepat
         applyOptimisticDelta(person, Number(realValue));
         setIsSubmitting(false);
+        // Tutup modal (saldo sudah di-update optimis, tidak perlu menunggu refresh)
         onClose();
-        onSuccess();
       }
     } catch (err) {
       setErrorMessage('Gagal menambahkan pemasukan.');

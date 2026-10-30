@@ -98,9 +98,8 @@ export default function AddTransactionModal({ isOpen, onClose, onSuccess }: AddT
         setSumber('Saya');
         setIsSubmitting(false);
         
-        // Tutup modal dan refresh data (background sync dari server)
+        // Tutup modal (data sudah di-update optimis, tidak perlu menunggu refresh dari server)
         onClose();
-        onSuccess();
       }
     } catch (err) {
       setErrorMessage('Terjadi kesalahan saat menyimpan transaksi.');
