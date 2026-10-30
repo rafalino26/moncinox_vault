@@ -8,7 +8,7 @@ module.exports = function loadModule(relativePath, overrides = {}) {
 
 function loadFile(filename, overrides) {
   const { outputText } = ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true },
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true, jsx: ts.JsxEmit.ReactJSX },
     fileName: filename,
   });
   const module = { exports: {} };

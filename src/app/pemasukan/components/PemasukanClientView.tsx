@@ -1,81 +1,79 @@
 'use client';
 
-import { useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import type { Pemasukan } from '@prisma/client';
+import { FiArrowDownLeft, FiBarChart2, FiList, FiPlus, FiTrash2 } from 'react-icons/fi';
 import { deletePemasukan } from '@/app/actions/transactionActions';
-import ConfirmationModal from '@/app/components/ConfirmationModal';
-import { FiTrash2 } from 'react-icons/fi';
 import { useIncomeData, useWallet } from '@/app/components/WalletContext';
+import ConfirmationModal from '@/app/components/ConfirmationModal';
+import AddUangSakuModal from '@/app/components/AddUangSakuModal';
 import DataStatus from '@/app/components/DataStatus';
+import LedgerHero from '@/app/components/ledger/LedgerHero';
+import LedgerFilters, { useLedgerQuery } from '@/app/components/ledger/LedgerFilters';
+import LedgerSelect from '@/app/components/ledger/LedgerSelect';
+import { filterIncome, incomeEntries, personName, rupiah, periodLabels } from '@/app/lib/ledger';
+import { calendarDateKey, calendarDateLabel } from '@/app/lib/dates';
+import { StitchLoading } from '@/app/components/StitchMotion';
+
+const LedgerChart = dynamic(() => import('@/app/components/ledger/LedgerChart'), { ssr: false,
+  loading: () => <StitchLoading /> });
 
 export default function PemasukanClientView() {
-    const incomeData = useIncomeData();
-    const { removeSavedIncome } = useWallet();
-    const history = incomeData.data ?? [];
-    const [visibleCount, setVisibleCount] = useState(50);
-    const [mutationError, setMutationError] = useState<string | null>(null);
-    const [itemToDelete, setItemToDelete] = useState<Pemasukan | null>(null);
-
-    const handleConfirmDelete = async () => {
-        if (!itemToDelete) return;
-
-        setMutationError(null);
-        try {
-            const result = await deletePemasukan(itemToDelete.id);
-            if (result.success) removeSavedIncome(itemToDelete.id, result.wallet);
-            else setMutationError(result.error ?? 'Gagal menghapus pemasukan.');
-        } catch {
-            setMutationError('Gagal menghapus pemasukan. Silakan coba lagi.');
-        }
-        setItemToDelete(null);
-    };
-
-    return (
-        <>
-            <DataStatus error={incomeData.error} retry={incomeData.retry} loading={incomeData.isLoading} />
-            {mutationError && <p role="alert" className="text-sm text-red-700">{mutationError}</p>}
-            {incomeData.data && <>
-            <div className="space-y-3">
-                {history.length > 0 ? (
-                    history.slice(0, visibleCount).map(item => (
-                        <div key={item.id} className="bg-white/40 backdrop-blur-lg p-3 sm:p-4 rounded-xl shadow-md flex justify-between items-center gap-3">
-                            <div className="min-w-0 flex-1">
-                                <p className="font-bold text-slate-800 text-sm sm:text-base">
-                                    Pemasukan untuk <span className="text-[#5c2799]">{item.sumber === 'Saya' ? 'Rafa' : 'Monik'}</span>
-                                </p>
-                                <p className="text-xs sm:text-sm text-slate-600 truncate mt-0.5">
-                                    {new Date(item.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
-                                </p>
-                            </div>
-                            <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-                                <p className="font-bold text-sm sm:text-base text-green-600 whitespace-nowrap">+Rp{item.jumlah.toLocaleString('id-ID')}</p>
-                                <button 
-                                    onClick={() => setItemToDelete(item)} 
-                                    className="p-2 text-slate-400 hover:text-red-600 active:bg-red-100 rounded-full"
-                                    aria-label="Hapus pemasukan"
-                                >
-                                    <FiTrash2 size={16} />
-                                </button>
-                            </div>
-                        </div>
-                    ))
-                ) : (
-                    <div className="bg-white/30 backdrop-blur-lg text-center p-8 rounded-xl shadow-lg">
-                        <p className="text-slate-500">Belum ada riwayat pemasukan.</p>
-                    </div>
-                )}
-            </div>
-            {history.length > visibleCount && <button type="button" onClick={() => setVisibleCount(count => count + 50)} className="mt-4 w-full rounded-xl bg-purple-50 p-3 text-sm font-semibold text-purple-800">Tampilkan lebih banyak ({visibleCount} dari {history.length})</button>}
-            </>}
-
-            {itemToDelete && (
-                <ConfirmationModal
-                    title="Hapus Pemasukan?"
-                    message={`Yakin mau hapus pemasukan untuk ${itemToDelete.sumber === 'Saya' ? 'Rafa' : 'Monik'} senilai Rp${itemToDelete.jumlah.toLocaleString('id-ID')}? Saldo akan dikurangi.`}
-                    onConfirm={handleConfirmDelete}
-                    onCancel={() => setItemToDelete(null)}
-                />
-            )}
-        </>
-    );
+  const incomeData = useIncomeData();
+  const { removeSavedIncome } = useWallet();
+  const { filters, update } = useLedgerQuery();
+  const view = useSearchParams().get('view') || 'tabel';
+  const [query, setQuery] = useState('');
+  const search = useDeferredValue(query).trim().toLowerCase();
+  const [visibleCount, setVisibleCount] = useState(50);
+  const [mutationError, setMutationError] = useState<string | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<Pemasukan | null>(null);
+  const [selectedPerson, setSelectedPerson] = useState<'Saya' | 'Pacar_Saya'>('Saya');
+  const [addPerson, setAddPerson] = useState<'Saya' | 'Pacar_Saya' | null>(null);
+  const filterKey = JSON.stringify(filters);
+  const filtered = useMemo(() => filterIncome(incomeData.data ?? [], JSON.parse(filterKey)).filter(item =>
+    !search || `uang saku ${personName(item.sumber)} ${calendarDateLabel(calendarDateKey(item.createdAt))} ${item.jumlah}`.toLowerCase().includes(search)), [incomeData.data, filterKey, search]);
+  const entries = useMemo(() => incomeEntries(filtered), [filtered]);
+  useEffect(() => { setVisibleCount(50); }, [filterKey, search]);
+  const handleDelete = async () => {
+    if (!itemToDelete) return;
+    setMutationError(null);
+    try {
+      const result = await deletePemasukan(itemToDelete.id);
+      if (result.success) removeSavedIncome(itemToDelete.id, result.wallet);
+      else setMutationError(result.error ?? 'Gagal menghapus pemasukan.');
+    } catch { setMutationError('Gagal menghapus pemasukan. Silakan coba lagi.'); }
+    setItemToDelete(null);
+  };
+  if (incomeData.isLoading && !incomeData.error) return <StitchLoading centered />;
+  return <div className="ledger-page">
+    <LedgerHero title="Pemasukan" subtitle="mizukuzuw & puzukuzuw" label="Total pemasukan" total={incomeData.data ? filtered.reduce((sum, item) => sum + item.jumlah, 0) : null}
+      period={periodLabels[filters.rentang] || 'Hasil filter'} count={filtered.length} sticker="/stickers/stitchbareng3.png" />
+    <div className="ledger-segments" aria-label="Penerima pemasukan">{[['semua', 'Semua'], ['Saya', 'Puskasw'], ['Pacar_Saya', 'Miskasw']].map(([value, label]) =>
+      <button type="button" key={value} aria-pressed={filters.sumber === value} onClick={() => update('sumber', value)}>{label}</button>)}</div>
+    <LedgerFilters filters={filters} update={update} search={query} onSearch={setQuery} income />
+    <div className="ledger-add-income">
+      <LedgerSelect<typeof selectedPerson> label="Uang saku untuk" value={selectedPerson} onChange={setSelectedPerson}
+        options={[{ value: 'Saya', label: 'Puskasw' }, { value: 'Pacar_Saya', label: 'Miskasw' }]} />
+      <button type="button" className="ledger-primary" onClick={() => setAddPerson(selectedPerson)}><FiPlus aria-hidden="true" />Tambah pemasukan</button>
+    </div>
+    <DataStatus error={incomeData.error} retry={incomeData.retry} loading={incomeData.isLoading} />
+    {mutationError && <p role="alert" className="ledger-alert">{mutationError}</p>}
+    <section className="ledger-sheet">
+      <div className="ledger-view-tabs" aria-label="Tampilan pemasukan">{[{ value: 'tabel', label: 'Daftar', icon: FiList }, { value: 'grafik', label: 'Grafik', icon: FiBarChart2 }].map(item =>
+        <button type="button" key={item.value} aria-pressed={view === item.value} onClick={() => update('view', item.value)}><item.icon aria-hidden="true" />{item.label}</button>)}</div>
+      {incomeData.data && (view === 'grafik' ? <LedgerChart entries={entries} income /> : <>
+        <div className="ledger-section-heading"><h2>Riwayat pemasukan</h2><span>{filtered.length} catatan</span></div>
+        {filtered.length ? <ul className="ledger-rows">{filtered.slice(0, visibleCount).map(item => <li key={item.id} className="ledger-row">
+          <div className="ledger-row-main"><span className="ledger-row-icon" aria-hidden="true"><FiArrowDownLeft /></span><div className="ledger-row-description"><h3>Uang saku {personName(item.sumber)}</h3><p>{calendarDateLabel(calendarDateKey(item.createdAt))}</p></div><strong className="ledger-amount">+{rupiah(item.jumlah)}</strong></div>
+          <div className="ledger-row-footer"><span className="ledger-tag">Pemasukan</span><div className="ledger-row-actions"><button type="button" aria-label={`Hapus pemasukan ${personName(item.sumber)} ${rupiah(item.jumlah)}`} onClick={() => setItemToDelete(item)}><FiTrash2 aria-hidden="true" />Hapus</button></div></div>
+        </li>)}</ul> : <p className="ledger-empty">Belum ada pemasukan untuk filter ini. Coba periode lain atau tambah uang saku baru.</p>}
+        {filtered.length > visibleCount && <button type="button" className="ledger-load-more" onClick={() => setVisibleCount(value => value + 50)}>Lihat lebih banyak · {visibleCount} dari {filtered.length}</button>}
+      </>)}
+    </section>
+    {addPerson && <AddUangSakuModal person={addPerson} personName={personName(addPerson)} onClose={() => setAddPerson(null)} />}
+    {itemToDelete && <ConfirmationModal tone="violet" title="Hapus pemasukan?" message={`Hapus uang saku ${personName(itemToDelete.sumber)} sebesar ${rupiah(itemToDelete.jumlah)}? Saldo akan dikurangi.`} onConfirm={handleDelete} onCancel={() => setItemToDelete(null)} />}
+  </div>;
 }

@@ -2,7 +2,8 @@
 
 import { useState, useRef, ChangeEvent } from 'react';
 import Image from 'next/image';
-import { FiX, FiLoader } from 'react-icons/fi';
+import { FiX, FiArrowUpRight, FiBookmark } from 'react-icons/fi';
+import { StitchSaving } from './StitchMotion';
 import { updateTransaction } from '@/app/actions/transactionActions';
 import type { Transaction } from '@prisma/client';
 import { useWallet } from './WalletContext';
@@ -169,7 +170,7 @@ export default function EditTransactionModal({
                     : 'bg-white text-slate-700 border-purple-100 hover:bg-purple-50/50'
                 }`}
               >
-                <span>💸</span> Pengeluaran
+                <FiArrowUpRight aria-hidden="true" /> Pengeluaran
               </button>
               <button
                 type="button"
@@ -181,7 +182,7 @@ export default function EditTransactionModal({
                     : 'bg-white text-slate-700 border-purple-100 hover:bg-purple-50/50'
                 }`}
               >
-                <span>🐷</span> Tabungan
+                <FiBookmark aria-hidden="true" /> Tabungan
               </button>
             </div>
           </div>
@@ -267,12 +268,9 @@ export default function EditTransactionModal({
             className="w-full py-3.5 px-4 bg-gradient-to-r from-[#5c2799] to-[#743ab7] hover:from-[#4b1d83] hover:to-[#5c2799] text-white font-bold rounded-xl shadow-lg shadow-purple-600/30 transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed min-h-[48px]"
           >
             {isSubmitting ? (
-              <>
-                <FiLoader className="animate-spin text-xl" />
-                <span>Menyimpan Perubahan...</span>
-              </>
+              <StitchSaving />
             ) : (
-              <span>Simpan Perubahan 💜</span>
+              <span>Simpan Perubahan</span>
             )}
           </button>
         </form>

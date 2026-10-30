@@ -66,7 +66,7 @@ export default function TransactionList({ transactions }: { transactions: Transa
               className="object-contain"
             />
           </div>
-          <p className="text-slate-700 font-bold text-sm">belum ada apaaa apaaa ayanggg 💜</p>
+          <p className="text-slate-700 font-bold text-sm">Belum ada catatan di sini.</p>
           <p className="text-xs text-slate-400 mt-1">Klik tombol (+) di kanan bawah buat nambah</p>
         </div>
       )}

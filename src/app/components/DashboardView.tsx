@@ -8,9 +8,10 @@ import CollapsibleSection from './CollapsibleSection';
 import SpendingAnalysis from './SpendingAnalysis';
 import TransactionList from './TransactionList';
 import { filterTransactions } from '../lib/transaction-filters';
+import { StitchLoading } from './StitchMotion';
 
 const DashboardCharts = dynamic(() => import('./DashboardCharts'), {
-  loading: () => <p className="p-4 text-sm text-purple-700">Memuat grafik...</p>,
+  loading: () => <StitchLoading />,
   ssr: false,
 });
 
@@ -18,6 +19,10 @@ export default function DashboardView() {
   const walletData = useWalletsData();
   const transactionData = useTransactionsData();
   const transactions = transactionData.data ?? [];
+
+  if (walletData.isLoading && transactionData.isLoading && !walletData.error && !transactionData.error) {
+    return <StitchLoading centered />;
+  }
 
   // History (Riwayat Transaksi Terbaru) dari state lokal (supaya bisa optimistic update)
   const transactionList = (
@@ -27,6 +32,7 @@ export default function DashboardView() {
   return (
     <div className="space-y-6 sm:space-y-7 relative overflow-x-clip">
       <DataStatus
+        illustrated
         error={walletData.error || transactionData.error}
         loading={walletData.isLoading || transactionData.isLoading}
         retry={() => {

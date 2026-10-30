@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, useSyncExternalStore, t
 import type { Wallet, Transaction, Pemasukan } from '@prisma/client';
 import { createResource, fetchJson, type Resource } from '../lib/resource';
 import { replaceWallet, prependSavedTransaction, type WalletsState } from '../lib/wallet-state';
+import { StitchFeedbackProvider, useStitchFeedback } from './StitchFeedback';
 
 export type { WalletsState } from '../lib/wallet-state';
 
@@ -35,7 +36,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       window.clearInterval(timer);
     };
   }, [store]);
-  return <WalletContext.Provider value={store}>{children}</WalletContext.Provider>;
+  return <WalletContext.Provider value={store}><StitchFeedbackProvider>{children}</StitchFeedbackProvider></WalletContext.Provider>;
 }
 
 function useFinanceStore() {
@@ -57,6 +58,7 @@ export function useIncomeData() { return useResource(useFinanceStore().income); 
 // Mutation responses update every mounted route without a full router refresh.
 export function useWallet() {
   const store = useFinanceStore();
+  const celebrate = useStitchFeedback();
   const updateSavedWallet = (wallet: Wallet) => {
     store.wallets.mutate(previous => replaceWallet(previous, wallet));
   };
@@ -65,6 +67,7 @@ export function useWallet() {
     addSavedTransaction: (transaction: Transaction, wallet: Wallet) => {
       updateSavedWallet(wallet);
       store.transactions.mutate(previous => prependSavedTransaction(previous, transaction));
+      celebrate('Catatan tersimpan!');
     },
     removeSavedTransaction: (id: string, wallet: Wallet) => {
       updateSavedWallet(wallet);
@@ -74,10 +77,12 @@ export function useWallet() {
       wallets.forEach(updateSavedWallet);
       store.transactions.mutate(previous => prependSavedTransaction(previous, transaction)
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      celebrate('Catatan diperbarui!');
     },
     addSavedIncome: (income: Pemasukan, wallet: Wallet) => {
       updateSavedWallet(wallet);
       store.income.mutate(previous => [income, ...previous.filter(item => item.id !== income.id)]);
+      celebrate('Uang saku sudah masuk!');
     },
     removeSavedIncome: (id: string, wallet: Wallet) => {
       updateSavedWallet(wallet);
