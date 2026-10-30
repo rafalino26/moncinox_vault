@@ -1,30 +1,31 @@
 'use client';
 
 import { useCallback, ReactNode } from 'react';
-import type { Wallet, Transaction } from '@prisma/client';
 import { useRouter } from 'next/navigation';
 
+import { useWallet } from './WalletContext';
 import StatCards from './StatCards';
 import CollapsibleSection from './CollapsibleSection';
 import SpendingAnalysis from './SpendingAnalysis';
+import TransactionList from './TransactionList';
 
 export default function DashboardView({
   charts,
-  transactionList,
-  allTransactions = [],
-  wallets,
 }: {
   charts: ReactNode;
-  transactionList: ReactNode;
-  allTransactions?: Transaction[];
-  wallets: { rafaWallet: Wallet | null; monikWallet: Wallet | null };
 }) {
   const router = useRouter();
+  const { wallets, transactions } = useWallet();
 
   // Refresh halaman setelah ada aksi dari modal (uang saku / transaksi)
   const refreshData = useCallback(async () => {
     router.refresh();
   }, [router]);
+
+  // History (Riwayat Transaksi Terbaru) dari state lokal (supaya bisa optimistic update)
+  const transactionList = (
+    <TransactionList transactions={transactions.slice(0, 10)} />
+  );
 
   return (
     <div className="space-y-6 sm:space-y-7 relative overflow-x-clip">
@@ -32,7 +33,7 @@ export default function DashboardView({
       <StatCards wallets={wallets} onDataUpdate={refreshData} />
 
       {/* 2. Spending Analysis (Chevron < MODE > & Swipeable dengan Watermark Stitch) */}
-      <SpendingAnalysis transactions={allTransactions} />
+      <SpendingAnalysis transactions={transactions} />
 
       {/* 3. History (Riwayat Transaksi Terbaru) */}
       <div className="space-y-3">

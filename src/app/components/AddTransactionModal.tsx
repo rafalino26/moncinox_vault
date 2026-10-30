@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { FiX, FiLoader } from 'react-icons/fi';
 import { addTransaction } from '@/app/actions/transactionActions';
+import { useWallet } from './WalletContext';
 
 interface AddTransactionModalProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface AddTransactionModalProps {
 }
 
 export default function AddTransactionModal({ isOpen, onClose, onSuccess }: AddTransactionModalProps) {
+  const { applyOptimisticDelta, addOptimisticTransaction } = useWallet();
   const router = useRouter();
   const [displayValue, setDisplayValue] = useState('');
   const [realValue, setRealValue] = useState('');
@@ -74,6 +76,20 @@ export default function AddTransactionModal({ isOpen, onClose, onSuccess }: AddT
         setErrorMessage(result.error);
         setIsSubmitting(false);
       } else {
+        // OPTIMISTIC UPDATE: update UI lokal dulu biar terasa cepat,
+        // baru refresh dari server lewat onSuccess() sebagai sinkronisasi.
+        applyOptimisticDelta(sumber, tipe === 'pengeluaran' ? -Number(realValue) : Number(realValue));
+
+        addOptimisticTransaction({
+          id: `optimistic-${Date.now()}`,
+          keterangan: note,
+          jumlah: Number(realValue),
+          tipe,
+          sumber,
+          tanggal: new Date(tanggal),
+          createdAt: new Date(),
+        });
+
         // Reset state
         setDisplayValue('');
         setRealValue('');
@@ -82,7 +98,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSuccess }: AddT
         setSumber('Saya');
         setIsSubmitting(false);
         
-        // Tutup modal dan refresh data
+        // Tutup modal dan refresh data (background sync dari server)
         onClose();
         onSuccess();
       }

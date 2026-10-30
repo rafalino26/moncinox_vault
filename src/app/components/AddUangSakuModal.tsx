@@ -2,6 +2,7 @@
 
 import { FiX, FiLoader } from 'react-icons/fi';
 import { addUangSaku } from '@/app/actions/transactionActions';
+import { useWallet } from './WalletContext';
 import { useState, ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -20,6 +21,7 @@ export default function AddUangSakuModal({
   onSuccess,
 }: ModalProps) {
   const router = useRouter();
+  const { applyOptimisticDelta } = useWallet();
   const [displayValue, setDisplayValue] = useState('');
   const [realValue, setRealValue] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,6 +58,8 @@ export default function AddUangSakuModal({
         setErrorMessage(result.error);
         setIsSubmitting(false);
       } else {
+        // OPTIMISTIC UPDATE: tambah saldo lokal dulu biar terasa cepat
+        applyOptimisticDelta(person, Number(realValue));
         setIsSubmitting(false);
         onClose();
         onSuccess();
@@ -143,7 +147,7 @@ export default function AddUangSakuModal({
                 <span>Menyimpan...</span>
               </>
             ) : (
-              <span>Tambah Uang Saku 💜</span>
+              <span>Tambah Uang Saku!</span>
             )}
           </button>
         </form>
