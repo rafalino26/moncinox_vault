@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { FiX, FiLoader } from 'react-icons/fi';
 import { updateTransaction } from '@/app/actions/transactionActions';
 import type { Transaction } from '@prisma/client';
+import { useWallet } from './WalletContext';
 
 interface EditTransactionModalProps {
   transaction: Transaction;
@@ -17,6 +18,7 @@ export default function EditTransactionModal({
   onClose,
   onSuccess,
 }: EditTransactionModalProps) {
+  const { updateSavedTransaction } = useWallet();
   const [displayValue, setDisplayValue] = useState(() => new Intl.NumberFormat('id-ID').format(transaction.jumlah));
   const [realValue, setRealValue] = useState(String(transaction.jumlah));
   const [tipe, setTipe] = useState<'pengeluaran' | 'tabungan'>(transaction.tipe);
@@ -62,10 +64,11 @@ export default function EditTransactionModal({
         jumlah: Number(realValue),
         tipe,
         sumber,
-        tanggal: new Date(tanggal),
+        tanggal,
       });
 
       if (result?.success) {
+        updateSavedTransaction(result.transaction, result.wallets);
         setIsSubmitting(false);
         onClose();
         onSuccess();

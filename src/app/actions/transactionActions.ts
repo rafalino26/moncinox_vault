@@ -1,21 +1,20 @@
 'use server';
 import prisma from '../lib/prisma';
-import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import type { Transaction, Wallet } from '@prisma/client';
+import type { Pemasukan, Transaction, Wallet } from '@prisma/client';
 
 type MutationResult<T> =
     | ({ success: string; error?: undefined } & T)
     | { success?: undefined; error: string };
 
-export async function deleteTransaction(transactionId: string) {
+export async function deleteTransaction(transactionId: string): Promise<MutationResult<{ wallet: Wallet }>> {
     if (!transactionId) {
         return { error: "ID transaksi tidak valid." };
     }
 
     try {
         // Gunakan transaksi database untuk memastikan kedua operasi berhasil atau gagal bersamaan
-        const deletedTransaction = await prisma.$transaction(async (tx) => {
+        const saved = await prisma.$transaction(async (tx) => {
             // 1. Cari transaksi yang akan dihapus untuk mendapatkan jumlah dan sumbernya
             const transactionToDelete = await tx.transaction.findUnique({
                 where: { id: transactionId },
@@ -26,7 +25,7 @@ export async function deleteTransaction(transactionId: string) {
             }
 
             // 2. Kembalikan saldo ke dompet yang sesuai
-            await tx.wallet.update({
+            const wallet = await tx.wallet.update({
                 where: { person: transactionToDelete.sumber },
                 data: { balance: { increment: transactionToDelete.jumlah } },
             });
@@ -36,14 +35,10 @@ export async function deleteTransaction(transactionId: string) {
                 where: { id: transactionId },
             });
 
-            return deleted;
+            return { deleted, wallet };
         });
 
-        revalidatePath('/');
-        revalidatePath('/pengeluaran');
-        revalidatePath('/tabungan');
-
-        return { success: `Transaksi "${deletedTransaction.keterangan}" berhasil dihapus.` };
+        return { success: `Transaksi "${saved.deleted.keterangan}" berhasil dihapus.`, wallet: saved.wallet };
     } catch (error) {
         console.error(error);
         return { error: "Gagal menghapus transaksi." };
@@ -57,12 +52,10 @@ export async function getWallets() {
         let rafaWallet = wallets.find(w => w.person === 'Saya');
         let monikWallet = wallets.find(w => w.person === 'Pacar_Saya');
 
-        if (!rafaWallet) {
-            rafaWallet = await prisma.wallet.create({ data: { person: 'Saya', balance: 0 } });
-        }
-        if (!monikWallet) {
-            monikWallet = await prisma.wallet.create({ data: { person: 'Pacar_Saya', balance: 0 } });
-        }
+        [rafaWallet, monikWallet] = await Promise.all([
+            rafaWallet ?? prisma.wallet.upsert({ where: { person: 'Saya' }, create: { person: 'Saya', balance: 0 }, update: {} }),
+            monikWallet ?? prisma.wallet.upsert({ where: { person: 'Pacar_Saya' }, create: { person: 'Pacar_Saya', balance: 0 }, update: {} }),
+        ]);
         
         return { rafaWallet, monikWallet };
     } catch (error) {
@@ -70,22 +63,22 @@ export async function getWallets() {
     }
 }
 
-export async function addUangSaku(formData: FormData): Promise<MutationResult<{ wallet: Wallet }>> {
+export async function addUangSaku(formData: FormData): Promise<MutationResult<{ wallet: Wallet; income: Pemasukan }>> {
     const person = formData.get('person') as 'Saya' | 'Pacar_Saya';
     const amount = Number(formData.get('amount'));
 
-    if (!person || !amount || amount <= 0) return { error: "Jumlah tidak valid." };
+    if ((person !== 'Saya' && person !== 'Pacar_Saya') || !Number.isFinite(amount) || amount <= 0) return { error: "Jumlah tidak valid." };
 
     try {
-        const wallet = await prisma.$transaction(async (tx) => {
+        const saved = await prisma.$transaction(async (tx) => {
             // 1. Update saldo dompet
             const updatedWallet = await tx.wallet.update({ where: { person }, data: { balance: { increment: amount } } });
             // 2. Buat catatan di riwayat pemasukan
-            await tx.pemasukan.create({ data: { jumlah: amount, sumber: person } });
-            return updatedWallet;
+            const income = await tx.pemasukan.create({ data: { jumlah: amount, sumber: person } });
+            return { wallet: updatedWallet, income };
         });
         // Return the committed balance so the submitting client can update directly.
-        return { success: "Pemasukan berhasil dicatat!", wallet };
+        return { success: "Pemasukan berhasil dicatat!", ...saved };
     } catch (error) { return { error: "Gagal menambah pemasukan." } }
 }
 
@@ -97,19 +90,18 @@ export async function getPemasukanHistory() {
 }
 
 // BARU: Fungsi untuk menghapus pemasukan (dan mengembalikan saldo)
-export async function deletePemasukan(pemasukanId: string) {
+export async function deletePemasukan(pemasukanId: string): Promise<MutationResult<{ wallet: Wallet }>> {
     try {
-        await prisma.$transaction(async (tx) => {
+        const wallet = await prisma.$transaction(async (tx) => {
             const pemasukanToDelete = await tx.pemasukan.findUnique({ where: { id: pemasukanId } });
             if (!pemasukanToDelete) throw new Error("Pemasukan tidak ditemukan.");
             // Kurangi saldo dompet
-            await tx.wallet.update({ where: { person: pemasukanToDelete.sumber }, data: { balance: { decrement: pemasukanToDelete.jumlah } } });
+            const updatedWallet = await tx.wallet.update({ where: { person: pemasukanToDelete.sumber }, data: { balance: { decrement: pemasukanToDelete.jumlah } } });
             // Hapus catatan pemasukan
             await tx.pemasukan.delete({ where: { id: pemasukanId } });
+            return updatedWallet;
         });
-        revalidatePath('/');
-        revalidatePath('/pemasukan');
-        return { success: "Pemasukan berhasil dihapus." };
+        return { success: "Pemasukan berhasil dihapus.", wallet };
     } catch (error) { return { error: "Gagal menghapus pemasukan." } }
 }
 
@@ -119,7 +111,9 @@ export async function deletePemasukan(pemasukanId: string) {
 const TransactionSchema = z.object({
     keterangan: z.string().min(1, "Keterangan wajib diisi."),
     jumlah: z.coerce.number().positive(),
-    tanggal: z.string(),
+    tanggal: z.union([z.string(), z.date()])
+        .transform(value => value instanceof Date ? value.toISOString() : value)
+        .refine(value => !Number.isNaN(new Date(value).getTime()), 'Tanggal tidak valid.'),
     tipe: z.enum(['pengeluaran', 'tabungan']),
     sumber: z.enum(['Saya', 'Pacar_Saya']),
 });
@@ -285,48 +279,47 @@ export async function getDashboardStats() {
 }
 
 
-export async function updateTransaction(transactionId: string, updatedData: any) {
+export async function updateTransaction(transactionId: string, updatedData: unknown): Promise<MutationResult<{ transaction: Transaction; wallets: Wallet[] }>> {
+    const validated = TransactionSchema.safeParse(updatedData);
+    // Existing web and Android clients may send a Date or an ISO string.
+    if (!validated.success || !transactionId) {
+        return { error: 'Data tidak valid.' };
+    }
+    const data = validated.data;
     try {
-        await prisma.$transaction(async (tx) => {
+        const saved = await prisma.$transaction(async (tx) => {
             // 1. Get the OLD transaction
             const oldTx = await tx.transaction.findUnique({ where: { id: transactionId } });
             if (!oldTx) throw new Error("Transaction not found");
 
-            // 2. REVERSE the old math from the old wallet
-            // If it was an expense, we give the money back. If it was savings, we take it out.
-            await tx.wallet.update({
+            // Both expense and savings deduct from the spending wallet on creation.
+            const oldWallet = await tx.wallet.update({
                 where: { person: oldTx.sumber },
                 data: {
-                    balance: oldTx.tipe === 'pengeluaran' 
-                        ? { increment: oldTx.jumlah } 
-                        : { decrement: oldTx.jumlah }
+                    balance: { increment: oldTx.jumlah }
                 }
             });
 
             // 3. APPLY the new math to the new wallet
-            await tx.wallet.update({
-                where: { person: updatedData.sumber },
+            const newWallet = await tx.wallet.update({
+                where: { person: data.sumber },
                 data: {
-                    balance: updatedData.tipe === 'pengeluaran'
-                        ? { decrement: Number(updatedData.jumlah) }
-                        : { increment: Number(updatedData.jumlah) }
+                    balance: { decrement: data.jumlah }
                 }
             });
 
             // 4. UPDATE the transaction record
-            await tx.transaction.update({
+            const transaction = await tx.transaction.update({
                 where: { id: transactionId },
                 data: {
-                    keterangan: updatedData.keterangan,
-                    jumlah: Number(updatedData.jumlah),
-                    tipe: updatedData.tipe,
-                    sumber: updatedData.sumber,
-                    tanggal: new Date(updatedData.tanggal),
+                    ...data,
+                    tanggal: new Date(data.tanggal),
                 }
             });
+            return { transaction, wallets: oldWallet.person === newWallet.person ? [newWallet] : [oldWallet, newWallet] };
         });
 
-        return { success: true };
+        return { success: 'Transaksi berhasil diperbarui.', ...saved };
     } catch (error) {
         console.error("Update failed:", error);
         return { error: "Failed to update transaction" };

@@ -1,63 +1,87 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, type ReactNode, type Dispatch, type SetStateAction } from 'react';
-import type { Wallet, Transaction } from '@prisma/client';
+import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
+import type { Wallet, Transaction, Pemasukan } from '@prisma/client';
+import { createResource, fetchJson, type Resource } from '../lib/resource';
 import { replaceWallet, prependSavedTransaction, type WalletsState } from '../lib/wallet-state';
 
 export type { WalletsState } from '../lib/wallet-state';
 
-type WalletContextValue = {
-  wallets: WalletsState;
-  updateSavedWallet: (wallet: Wallet) => void;
-  transactions: Transaction[];
-  addSavedTransaction: (tx: Transaction, wallet: Wallet) => void;
-  setTransactions: Dispatch<SetStateAction<Transaction[]>>;
-};
-
-const WalletContext = createContext<WalletContextValue | null>(null);
-
-export function WalletProvider({
-  initialWallets,
-  initialTransactions = [],
-  children,
-}: {
-  initialWallets: WalletsState;
-  initialTransactions?: Transaction[];
-  children: ReactNode;
-}) {
-  const [wallets, setWallets] = useState<WalletsState>(initialWallets);
-  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
-
-  useEffect(() => {
-    setWallets(initialWallets);
-  }, [initialWallets]);
-
-  useEffect(() => {
-    setTransactions(initialTransactions);
-  }, [initialTransactions]);
-
-  const updateSavedWallet = (wallet: Wallet) => {
-    setWallets(prev => replaceWallet(prev, wallet));
+function createFinanceStore() {
+  return {
+    wallets: createResource(() => fetchJson<WalletsState>('/api/web/wallets')),
+    transactions: createResource(() => fetchJson<Transaction[]>('/api/web/transactions')),
+    income: createResource(() => fetchJson<Pemasukan[]>('/api/web/income')),
   };
-
-  const addSavedTransaction = (tx: Transaction, wallet: Wallet) => {
-    updateSavedWallet(wallet);
-    setTransactions(prev => prependSavedTransaction(prev, tx));
-  };
-
-  return (
-    <WalletContext.Provider
-      value={{ wallets, updateSavedWallet, transactions, addSavedTransaction, setTransactions }}
-    >
-      {children}
-    </WalletContext.Provider>
-  );
 }
 
-export function useWallet(): WalletContextValue {
-  const ctx = useContext(WalletContext);
-  if (!ctx) {
-    throw new Error('useWallet harus digunakan di dalam WalletProvider');
-  }
-  return ctx;
+const WalletContext = createContext<ReturnType<typeof createFinanceStore> | null>(null);
+
+export function WalletProvider({ children }: { children: ReactNode }) {
+  const [store] = useState(createFinanceStore);
+  useEffect(() => {
+    const revalidate = () => {
+      if (document.visibilityState !== 'visible') return;
+      Object.values(store).forEach(resource => resource.revalidateIfLoaded());
+    };
+    window.addEventListener('focus', revalidate);
+    window.addEventListener('online', revalidate);
+    document.addEventListener('visibilitychange', revalidate);
+    const timer = window.setInterval(revalidate, 60_000);
+    return () => {
+      window.removeEventListener('focus', revalidate);
+      window.removeEventListener('online', revalidate);
+      document.removeEventListener('visibilitychange', revalidate);
+      window.clearInterval(timer);
+    };
+  }, [store]);
+  return <WalletContext.Provider value={store}>{children}</WalletContext.Provider>;
+}
+
+function useFinanceStore() {
+  const store = useContext(WalletContext);
+  if (!store) throw new Error('Gunakan di dalam WalletProvider');
+  return store;
+}
+
+function useResource<T>(resource: Resource<T>) {
+  const snapshot = useSyncExternalStore(resource.subscribe, resource.getSnapshot, resource.getServerSnapshot);
+  useEffect(() => { void resource.load(); }, [resource]);
+  return { ...snapshot, isLoading: snapshot.data === undefined, retry: () => resource.load(true) };
+}
+
+export function useWalletsData() { return useResource(useFinanceStore().wallets); }
+export function useTransactionsData() { return useResource(useFinanceStore().transactions); }
+export function useIncomeData() { return useResource(useFinanceStore().income); }
+
+// Mutation responses update every mounted route without a full router refresh.
+export function useWallet() {
+  const store = useFinanceStore();
+  const updateSavedWallet = (wallet: Wallet) => {
+    store.wallets.mutate(previous => replaceWallet(previous, wallet));
+  };
+  return {
+    updateSavedWallet,
+    addSavedTransaction: (transaction: Transaction, wallet: Wallet) => {
+      updateSavedWallet(wallet);
+      store.transactions.mutate(previous => prependSavedTransaction(previous, transaction));
+    },
+    removeSavedTransaction: (id: string, wallet: Wallet) => {
+      updateSavedWallet(wallet);
+      store.transactions.mutate(previous => previous.filter(transaction => transaction.id !== id));
+    },
+    updateSavedTransaction: (transaction: Transaction, wallets: Wallet[]) => {
+      wallets.forEach(updateSavedWallet);
+      store.transactions.mutate(previous => prependSavedTransaction(previous, transaction)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    },
+    addSavedIncome: (income: Pemasukan, wallet: Wallet) => {
+      updateSavedWallet(wallet);
+      store.income.mutate(previous => [income, ...previous.filter(item => item.id !== income.id)]);
+    },
+    removeSavedIncome: (id: string, wallet: Wallet) => {
+      updateSavedWallet(wallet);
+      store.income.mutate(previous => previous.filter(item => item.id !== id));
+    },
+  };
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation'; 
+import { useWallet } from './WalletContext';
 import { useRef, useState, ChangeEvent } from 'react';
 import { addTransaction } from "@/app/actions/transactionActions";
 import CustomDropdown from "./CustomDropdown";
@@ -10,7 +10,7 @@ import SubmitButton from './SubmitButton';
 export default function TransactionForm({ onSuccess }: { onSuccess: () => void }) {
     const formRef = useRef<HTMLFormElement>(null);
     const inputClass = "w-full p-3 bg-white/50 border border-black/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d9b3ff] text-base min-h-[44px]";
-    const router = useRouter();
+    const { addSavedTransaction } = useWallet();
     const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const [displayValue, setDisplayValue] = useState('');
     const [realValue, setRealValue] = useState('');
@@ -50,6 +50,7 @@ export default function TransactionForm({ onSuccess }: { onSuccess: () => void }
         if (result?.error) {
             setStatus({ type: 'error', message: result.error });
         } else {
+            if (result.success) addSavedTransaction(result.transaction, result.wallet);
             setStatus({ type: 'success', message: 'Data berhasil ditambahkan!' });
             formRef.current?.reset();
             setDisplayValue('');

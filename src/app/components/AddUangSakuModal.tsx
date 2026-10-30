@@ -17,7 +17,7 @@ export default function AddUangSakuModal({
   personName,
   onClose,
 }: ModalProps) {
-  const { updateSavedWallet } = useWallet();
+  const { addSavedIncome } = useWallet();
   const [displayValue, setDisplayValue] = useState('');
   const [realValue, setRealValue] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -54,7 +54,7 @@ export default function AddUangSakuModal({
         setErrorMessage(result.error ?? 'Gagal menambahkan pemasukan.');
         setIsSubmitting(false);
       } else {
-        updateSavedWallet(result.wallet);
+        addSavedIncome(result.income, result.wallet);
         setIsSubmitting(false);
         // No second request is needed to display the committed balance.
         onClose();

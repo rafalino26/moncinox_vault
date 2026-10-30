@@ -1,8 +1,11 @@
 'use client';
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import PengeluaranChart from "./PengeluaranChart";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import PengeluaranTable from "./PengeluaranTable";
 import type { Transaction } from "@prisma/client";
+
+const PengeluaranChart = dynamic(() => import('./PengeluaranChart'), { ssr: false });
 
 export default function DataView({ data, onDelete, onEdit, totalPengeluaran, totalTabungan }: { 
     data: Transaction[], 
@@ -13,13 +16,14 @@ export default function DataView({ data, onDelete, onEdit, totalPengeluaran, tot
 }) {
     const searchParams = useSearchParams();
     const pathname = usePathname();
-    const { replace } = useRouter();
+    const [visibleCount, setVisibleCount] = useState(50);
+    useEffect(() => { setVisibleCount(50); }, [data]);
     const view = searchParams.get('view') || 'tabel';
 
     const setView = (newView: 'tabel' | 'grafik') => {
         const params = new URLSearchParams(searchParams);
         params.set('view', newView);
-        replace(`${pathname}?${params.toString()}`);
+        window.history.replaceState(null, '', `${pathname}?${params.toString()}`);
     };
 
     return (
@@ -45,7 +49,10 @@ export default function DataView({ data, onDelete, onEdit, totalPengeluaran, tot
             
             {data.length > 0 ? (
                view === 'tabel' 
-                    ? <PengeluaranTable data={data} onDelete={onDelete} onEdit={onEdit} totalPengeluaran={totalPengeluaran} totalTabungan={totalTabungan} /> 
+                    ? <>
+                        <PengeluaranTable data={data.slice(0, visibleCount)} onDelete={onDelete} onEdit={onEdit} totalPengeluaran={totalPengeluaran} totalTabungan={totalTabungan} />
+                        {data.length > visibleCount && <button type="button" onClick={() => setVisibleCount(count => count + 50)} className="mt-4 w-full rounded-xl bg-purple-50 p-3 text-sm font-semibold text-purple-800">Tampilkan lebih banyak ({visibleCount} dari {data.length})</button>}
+                      </>
                     : <PengeluaranChart data={data} />
             ) : (
                 <div className="text-center py-12"><p className="text-slate-500 font-medium">Tidak ada data untuk ditampilkan.</p></div>

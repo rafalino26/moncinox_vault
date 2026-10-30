@@ -1,25 +1,33 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
-import { useSearchParams, usePathname, useRouter } from 'next/navigation';
+import { useState, useMemo } from 'react';
+import { useSearchParams, usePathname } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import type { Transaction } from '@prisma/client';
-import { getFilteredTransactions, deleteTransaction, updateTransaction } from '../actions/transactionActions';
+import { deleteTransaction } from '../actions/transactionActions';
+import { useTransactionsData, useWallet } from './WalletContext';
+import { filterTransactions } from '../lib/transaction-filters';
+import DataStatus from './DataStatus';
 import FilterControls from '../pengeluaran/components/FilterControls';
 import DataView from '../pengeluaran/components/DataView';
 import ConfirmationModal from './ConfirmationModal';
 import ComparisonTable from '../pengeluaran/components/ComparisonTable';
-import ComparisonChart from './ComparisonChart';
 import type { ComparisonData } from '../types';
 import ComparisonDetailModal from '../pengeluaran/components/ComparisonDetailModal';
 import EditTransactionModal from './EditTransactionModal';
 
+const ComparisonChart = dynamic(() => import('./ComparisonChart'), { ssr: false });
+
 export default function TransactionView() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const router = useRouter();
-
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const transactionData = useTransactionsData();
+  const { removeSavedTransaction } = useWallet();
+  const [mutationError, setMutationError] = useState<string | null>(null);
+  const filterKey = searchParams.toString();
+  const transactions = useMemo(() => {
+    return filterTransactions(transactionData.data ?? [], Object.fromEntries(new URLSearchParams(filterKey)));
+  }, [transactionData.data, filterKey]);
   const [query, setQuery] = useState('');
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
   const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
@@ -30,31 +38,6 @@ export default function TransactionView() {
     transactions: [],
   });
   const activeTipe = (searchParams.get('tipe') as 'pengeluaran' | 'tabungan' | null) || 'semua';
-
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
-    const rentang = searchParams.get('rentang') || 'harian';
-    const urutkan = searchParams.get('urutkan') || 'terbaru';
-    const sumber = searchParams.get('sumber') as 'Saya' | 'Pacar_Saya' | undefined;
-    const from = searchParams.get('from') || undefined;
-    const to = searchParams.get('to') || undefined;
-    const tipe = searchParams.get('tipe') as 'pengeluaran' | 'tabungan' | undefined;
-
-    const data = await getFilteredTransactions({
-      rentang,
-      urutkan,
-      sumber,
-      from,
-      to,
-      tipe,
-    });
-    setTransactions(data);
-    setIsLoading(false);
-  }, [searchParams]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
 
   const filteredTransactions = useMemo(() => {
     if (!query) return transactions;
@@ -110,27 +93,22 @@ export default function TransactionView() {
 
   const handleConfirmDelete = async () => {
     if (!transactionToDelete) return;
-    await deleteTransaction(transactionToDelete.id);
+    setMutationError(null);
+    try {
+      const result = await deleteTransaction(transactionToDelete.id);
+      if (!result.success) {
+        setMutationError(result.error ?? 'Gagal menghapus transaksi.');
+      } else {
+        removeSavedTransaction(transactionToDelete.id, result.wallet);
+      }
+    } catch {
+      setMutationError('Gagal menghapus transaksi. Silakan coba lagi.');
+    }
     setTransactionToDelete(null);
-    await fetchData();
   };
 
   const handleEditClick = (transaction: Transaction) => {
     setTransactionToEdit(transaction);
-  };
-
-  const handleConfirmEdit = async () => {
-    if (!transactionToEdit) return;
-    await updateTransaction(transactionToEdit.id, {
-      keterangan: transactionToEdit.keterangan,
-      jumlah: transactionToEdit.jumlah,
-      tipe: transactionToEdit.tipe,
-      sumber: transactionToEdit.sumber,
-      tanggal: new Date(transactionToEdit.tanggal),
-    });
-    setTransactionToEdit(null);
-    await fetchData();
-    router.refresh();
   };
 
   const handleDetailClick = (date: string) => {
@@ -154,12 +132,13 @@ export default function TransactionView() {
     } else {
       params.set('tipe', tipe);
     }
-    router.replace(`${pathname}?${params.toString()}`);
+    window.history.replaceState(null, '', `${pathname}?${params.toString()}`);
   };
 
   return (
     <>
       <div className="space-y-5">
+        {mutationError && <p role="alert" className="text-sm text-red-700">{mutationError}</p>}
         {/* Filter Tipe Transaksi */}
         <div className="flex items-center justify-center p-1.5 bg-white/80 backdrop-blur-md rounded-2xl border border-purple-100 shadow-xs">
           <button
@@ -196,9 +175,8 @@ export default function TransactionView() {
 
         <FilterControls onSearchChange={setQuery} />
 
-        {isLoading ? (
-          <div className="text-center p-12 text-purple-700 font-semibold">Memuat data...</div>
-        ) : (
+        <DataStatus error={transactionData.error} retry={transactionData.retry} loading={transactionData.isLoading} />
+        {transactionData.data && (
           <>
             <div className="flex items-center justify-center mb-2 border-b border-purple-200/60">
               <button
@@ -270,8 +248,6 @@ export default function TransactionView() {
           onClose={() => setTransactionToEdit(null)}
           onSuccess={() => {
             setTransactionToEdit(null);
-            fetchData();
-            router.refresh();
           }}
         />
       )}

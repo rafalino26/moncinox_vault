@@ -1,19 +1,22 @@
 'use client';
 
-import { ReactNode } from 'react';
-
-import { useWallet } from './WalletContext';
+import dynamic from 'next/dynamic';
+import { useWalletsData, useTransactionsData } from './WalletContext';
+import DataStatus from './DataStatus';
 import StatCards from './StatCards';
 import CollapsibleSection from './CollapsibleSection';
 import SpendingAnalysis from './SpendingAnalysis';
 import TransactionList from './TransactionList';
 
-export default function DashboardView({
-  charts,
-}: {
-  charts: ReactNode;
-}) {
-  const { wallets, transactions } = useWallet();
+const DashboardCharts = dynamic(() => import('./DashboardCharts'), {
+  loading: () => <p className="p-4 text-sm text-purple-700">Memuat grafik...</p>,
+  ssr: false,
+});
+
+export default function DashboardView() {
+  const walletData = useWalletsData();
+  const transactionData = useTransactionsData();
+  const transactions = transactionData.data ?? [];
 
   // History (Riwayat Transaksi Terbaru) dari state lokal (supaya bisa optimistic update)
   const transactionList = (
@@ -22,9 +25,18 @@ export default function DashboardView({
 
   return (
     <div className="space-y-6 sm:space-y-7 relative overflow-x-clip">
+      <DataStatus
+        error={walletData.error || transactionData.error}
+        loading={walletData.isLoading || transactionData.isLoading}
+        retry={() => {
+          if (walletData.error) void walletData.retry();
+          if (transactionData.error) void transactionData.retry();
+        }}
+      />
       {/* 1. Kartu Dompet Kembar (Puskasw & Miskasw) Langsung di Atas */}
-      <StatCards wallets={wallets} />
+      {walletData.data && <StatCards wallets={walletData.data} />}
 
+      {transactionData.data && <>
       {/* 2. Spending Analysis (Chevron < MODE > & Swipeable dengan Watermark Stitch) */}
       <SpendingAnalysis transactions={transactions} />
 
@@ -42,9 +54,10 @@ export default function DashboardView({
       {/* 4. Bagian Grafik & Tren */}
       <div className="bg-white/80 backdrop-blur-md rounded-3xl border border-purple-100 shadow-xs overflow-hidden">
         <CollapsibleSection title="Grafik & Analisis Tren" defaultOpen={false}>
-          {charts}
+          <DashboardCharts transactions={transactions} />
         </CollapsibleSection>
       </div>
+      </>}
     </div>
   );
 }

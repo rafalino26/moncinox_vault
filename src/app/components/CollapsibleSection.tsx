@@ -22,6 +22,7 @@ export default function CollapsibleSection({
       {/* Header yang bisa diklik */}
       <button
         type="button"
+        aria-expanded={isOpen}
         className="w-full flex justify-between items-center p-4 sm:p-5 text-left focus:outline-none transition-colors hover:bg-purple-50/40"
         onClick={() => setIsOpen(!isOpen)}
       >
@@ -39,7 +40,7 @@ export default function CollapsibleSection({
         }`}
       >
         <div className="overflow-hidden px-4 pb-4 sm:px-5 sm:pb-5">
-          {children}
+          {isOpen && children}
         </div>
       </div>
     </div>

@@ -1,21 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const ts = require('typescript');
-
-// Exercise the actual TS modules with an isolated database; no live balances change.
-function loadModule(relativePath, overrides = {}) {
-  const filename = path.resolve(__dirname, '..', relativePath);
-  const { outputText } = ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true },
-    fileName: filename,
-  });
-  const module = { exports: {} };
-  const localRequire = name => Object.hasOwn(overrides, name) ? overrides[name] : require(name);
-  new Function('require', 'module', 'exports', outputText)(localRequire, module, module.exports);
-  return module.exports;
-}
+const loadModule = require('./helpers/load-ts.cjs');
 
 const { replaceWallet, prependSavedTransaction } = loadModule('src/app/lib/wallet-state.ts');
 const initial = {
@@ -98,6 +83,7 @@ test('top-up returns the balance saved with its income record', async () => {
     pemasukan: { create: async ({ data }) => {
       assert.deepEqual(data, { jumlah: 25000, sumber: 'Saya' });
       incomeSaved = true;
+      return { id: 'income-id', ...data, createdAt: new Date() };
     } },
   });
   const form = new FormData();
@@ -106,6 +92,7 @@ test('top-up returns the balance saved with its income record', async () => {
   const result = await actions.addUangSaku(form);
   assert.ok(incomeSaved);
   assert.equal(result.wallet, wallet);
+  assert.equal(result.income.id, 'income-id');
 });
 
 test('failed income save never publishes an uncommitted balance', async () => {

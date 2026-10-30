@@ -1,9 +1,13 @@
-import { getDashboardStats } from "@/app/actions/transactionActions";
+'use client';
+
+import { useMemo } from 'react';
+import type { Transaction } from '@prisma/client';
+import { getChartStats } from '../lib/transaction-filters';
 import DashboardDonutChart from "./DashboardDonutChart";
 import TrendChart from "./TrendChart";
 
-export default async function DashboardCharts() {
-  const { totalPemasukan, totalPengeluaran, weeklySpending } = await getDashboardStats();
+export default function DashboardCharts({ transactions }: { transactions: Transaction[] }) {
+  const { totalPemasukan, totalPengeluaran, weeklySpending } = useMemo(() => getChartStats(transactions), [transactions]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

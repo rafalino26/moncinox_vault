@@ -1,10 +1,6 @@
-import { getPemasukanHistory } from "@/app/actions/transactionActions";
 import PemasukanClientView from "./components/PemasukanClientView";
-import { Suspense } from "react";
 
-export default async function PemasukanPage() {
-    const history = await getPemasukanHistory();
-
+export default function PemasukanPage() {
     return (
         <div className="space-y-6">
             <div>
@@ -12,9 +8,7 @@ export default async function PemasukanPage() {
                 <p className="text-slate-600">Daftar semua uang saku yang pernah ditambahkan.</p>
             </div>
             
-            <Suspense fallback={<div className="text-center p-12">Memuat...</div>}>
-                <PemasukanClientView history={history} />
-            </Suspense>
+            <PemasukanClientView />
         </div>
     );
 }

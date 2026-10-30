@@ -1,5 +1,5 @@
 'use client';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useDebouncedCallback } from 'use-debounce';
 import { useState } from 'react';
 import { FiFilter, FiX } from 'react-icons/fi';
@@ -19,7 +19,6 @@ const sumberOptions = [{ value: 'semua', label: 'beduwaaaaa' }, { value: 'Saya',
 export default function FilterControls({ onSearchChange }: { onSearchChange: (term: string) => void }) {
     const searchParams = useSearchParams();
     const pathname = usePathname();
-    const { replace } = useRouter();
     const [isFilterOpen, setIsFilterOpen] = useState(false);
 
     const handleFilter = (key: string, value: string) => {
@@ -29,7 +28,7 @@ export default function FilterControls({ onSearchChange }: { onSearchChange: (te
             params.delete('from');
             params.delete('to');
         }
-        replace(`${pathname}?${params.toString()}`);
+        window.history.replaceState(null, '', `${pathname}?${params.toString()}`);
     };
     
     const handleSearch = useDebouncedCallback((term: string) => onSearchChange(term), 300);
