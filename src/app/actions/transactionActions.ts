@@ -78,8 +78,8 @@ export async function addUangSaku(formData: FormData) {
             // 2. Buat catatan di riwayat pemasukan
             await tx.pemasukan.create({ data: { jumlah: amount, sumber: person } });
         });
-        revalidatePath('/');
-        revalidatePath('/pemasukan');
+        // NOTE: revalidatePath dihapus — setelah optimis update, refresh via router
+        // sudah tidak diperlukan untuk jalur add (data sudah di-update lokal).
         return { success: "Pemasukan berhasil dicatat!" };
     } catch (error) { return { error: "Gagal menambah pemasukan." } }
 }
@@ -145,9 +145,8 @@ export async function addTransaction(formData: FormData) {
             });
         });
 
-        revalidatePath('/');
-        revalidatePath('/pengeluaran');
-        revalidatePath('/tabungan');
+        // NOTE: revalidatePath dihapus — setelah optimis update, refresh via router
+        // sudah tidak diperlukan untuk jalur add (data sudah di-update lokal).
         return { success: "Transaksi berhasil ditambahkan!" };
     } catch (error) {
         console.error(error);
