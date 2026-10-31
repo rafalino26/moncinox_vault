@@ -1,7 +1,7 @@
 'use client';
 
 import { useFormStatus } from 'react-dom';
-import { FiLoader } from 'react-icons/fi';
+import { StitchActionLabel } from './StitchMotion';
 
 export default function SubmitButton({ children, className }: { children: React.ReactNode, className?: string }) {
     // Hook ini akan otomatis memberikan status 'pending' dari form induknya
@@ -11,9 +11,10 @@ export default function SubmitButton({ children, className }: { children: React.
         <button 
             type="submit" 
             disabled={pending} 
+            aria-busy={pending}
             className={className || "w-full p-3 text-white bg-[#743ab7] rounded-lg font-semibold hover:bg-[#8451b6] transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#5c2799] disabled:bg-slate-400 disabled:cursor-not-allowed flex justify-center items-center h-[48px]"}
         >
-            {pending ? <FiLoader className="animate-spin text-2xl" /> : children}
+            <StitchActionLabel pending={pending}>{children}</StitchActionLabel>
         </button>
     );
 }

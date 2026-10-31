@@ -3,9 +3,10 @@
 import { useId, useState, useRef, ChangeEvent } from 'react';
 import Image from 'next/image';
 import { FiX, FiArrowUpRight, FiBookmark, FiCheck, FiCalendar } from 'react-icons/fi';
-import { StitchSaving } from './StitchMotion';
+import { StitchActionLabel } from './StitchMotion';
 import { addTransaction } from '@/app/actions/transactionActions';
 import { useWallet } from './WalletContext';
+import { useSwipeDismiss } from '../lib/use-swipe-dismiss';
 
 interface AddTransactionModalProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ export default function AddTransactionModal({ isOpen, onClose }: AddTransactionM
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitLock = useRef(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const swipe = useSwipeDismiss({ panel, canDismiss: () => !submitLock.current, onDismiss: onClose });
 
   const getTodayString = () => {
     const today = new Date();
@@ -115,8 +117,8 @@ export default function AddTransactionModal({ isOpen, onClose }: AddTransactionM
             else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
           }
         }}>
-        <div className="compose-handle" aria-hidden="true" />
-        <header className="compose-header">
+        <header className="compose-header" {...swipe}>
+          <div className="compose-handle" aria-hidden="true" />
           <div className="compose-header-copy">
             <p className="compose-eyebrow">mizukuzuw &amp; puzukuzuw</p>
             <h2 id={`${formId}-title`}>Catat transaksi</h2>
@@ -130,8 +132,7 @@ export default function AddTransactionModal({ isOpen, onClose }: AddTransactionM
           <div className="compose-fields">
             {errorMessage && <p id={`${formId}-error`} role="alert" className="compose-error">{errorMessage}</p>}
             <div className="compose-amount">
-              <label htmlFor={`${formId}-amount`}>Nominal</label>
-              <div><span aria-hidden="true">Rp</span><input id={`${formId}-amount`} type="text" inputMode="numeric" placeholder="0" value={displayValue}
+              <div><span aria-hidden="true">Rp</span><input id={`${formId}-amount`} aria-label="Jumlah transaksi dalam rupiah" type="text" inputMode="numeric" placeholder="0" value={displayValue}
                 onChange={handleAmountChange} disabled={isSubmitting} aria-describedby={errorMessage ? `${formId}-error` : undefined} autoFocus required /></div>
             </div>
 
@@ -169,8 +170,8 @@ export default function AddTransactionModal({ isOpen, onClose }: AddTransactionM
             </label>
           </div>
           <footer className="compose-footer">
-            <button type="submit" className="compose-submit" disabled={isSubmitting}>
-              {isSubmitting ? <StitchSaving /> : <><FiCheck aria-hidden="true" />Simpan catatan</>}
+            <button type="submit" className="compose-submit" disabled={isSubmitting} aria-busy={isSubmitting}>
+              <StitchActionLabel pending={isSubmitting}>Simpan catatan</StitchActionLabel>
             </button>
             <p>jangan borosw borosw</p>
           </footer>

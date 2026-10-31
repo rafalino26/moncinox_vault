@@ -4,6 +4,8 @@ import { useState, useMemo } from 'react';
 import type { Transaction } from '@prisma/client';
 import { getSpendingSummary } from '../lib/transaction-filters';
 import Image from 'next/image';
+import { StitchPeek } from './StitchMotion';
+import StitchHanging from './StitchHanging';
 import { 
   FiChevronLeft, 
   FiChevronRight, 
@@ -89,10 +91,11 @@ export default function SpendingAnalysis({ transactions }: SpendingAnalysisProps
   return (
     <div className="space-y-4">
       {/* Judul Bagian */}
-      <div className="px-1">
+      <div className="spending-heading px-1">
         <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
           Spending Analysis
         </h2>
+        <StitchPeek />
       </div>
 
       {/* 1. Pill Filter Siapa (All | Puskasw | Miskasw) */}
@@ -213,7 +216,8 @@ export default function SpendingAnalysis({ transactions }: SpendingAnalysisProps
         </div>
 
         {/* Expense Card */}
-        <div className="bg-white/95 backdrop-blur-md p-4 sm:p-5 rounded-[24px] border border-purple-100/80 shadow-xs flex flex-col justify-between min-h-[105px]">
+        <div className="relative bg-white/95 backdrop-blur-md p-4 sm:p-5 rounded-[24px] border border-purple-100/80 shadow-xs flex flex-col justify-between min-h-[105px]">
+          <StitchHanging />
           <div className="w-8 h-8 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center">
             <FiArrowUp size={18} className="stroke-[2.5]" />
           </div>

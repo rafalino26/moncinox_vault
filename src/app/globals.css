@@ -1,5 +1,25 @@
 @import "tailwindcss";
 
+.spending-heading { position: relative; display: flex; align-items: flex-end; min-height: 44px; padding-right: 82px; }
+.stitch-peek { position: absolute; bottom: -16px; right: 20px; width: 64px; height: 44px; overflow: hidden; pointer-events: none; }
+.stitch-peek-character { display: block; width: 64px; height: 77px; max-width: none; animation: stitch-peek-up 1500ms 250ms cubic-bezier(.2,.7,.3,1) both; }
+.stitch-hanging-anchor { position: absolute; top: calc(100% - 2px); right: 25px; width: 42px; height: 63px; z-index: 2; pointer-events: none; }
+.stitch-hanging-anchor::before { content: ''; position: absolute; top: -2px; left: 18px; width: 6px; height: 6px; border-radius: 50%; background: #b89acb; }
+.stitch-hanging-pendant { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; transform-origin: 50% 0; }
+.stitch-hanging-string { flex-shrink: 0; width: 2px; height: 12px; background: #cbb4dc; }
+.stitch-hanging-character { display: block; width: 42px; height: 51px; object-fit: contain; }
+@keyframes stitch-peek-up { 0% { transform: translateY(63px) rotate(-8deg); } 75% { transform: translateY(-3px) rotate(3deg); } 100% { transform: translateY(0) rotate(0); } }
+.stitch-submit-rocket { position: relative; display: inline-block; flex-shrink: 0; width: 32px; height: 34px; pointer-events: none; }
+.stitch-submit-spinner { position: absolute; inset: 0; }
+.stitch-submit-scale { position: absolute; top: 0; left: 4px; width: 88px; height: 128px; transform: scale(.25); transform-origin: top left; }
+.stitch-submit-rocket .stitch-rocket { animation: none; }
+.stitch-submit-rocket .stitch-rocket-flame { animation: none; opacity: 0; }
+.stitch-submit-rocket.is-spinning .stitch-submit-spinner { animation: stitch-submit-spin 1600ms linear infinite; }
+@keyframes stitch-submit-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .stitch-peek-character, .stitch-submit-rocket.is-spinning .stitch-submit-spinner { animation: none; }
+}
+
 .stitch-loading-scene { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 230px; padding: 16px; color: #9675ad; }
 .stitch-loading-centered { min-height: max(320px, calc(100svh - 220px)); overflow: hidden; }
 .stitch-loading-centered .stitch-rocket-launch { animation-name: stitch-rocket-takeoff-centered; }
@@ -36,6 +56,7 @@
 .compose-handle { position: absolute; top: 9px; left: calc(50% - 16px); z-index: 2; width: 32px; height: 4px; border-radius: 10px; background: #d4bfe7; }
 .compose-header { position: relative; flex-shrink: 0; padding: 29px 20px 22px; min-height: 130px; border-bottom: 1px solid #f0e5f6; background: linear-gradient(115deg, #f1e8fc, #fcf0fa); }
 .compose-header-copy { position: relative; max-width: calc(100% - 104px); z-index: 1; }
+@media (max-width: 639px) { .compose-header { touch-action: none; user-select: none; cursor: grab; } .compose-header:active { cursor: grabbing; } }
 .compose-eyebrow { display: flex; align-items: center; gap: 5px; color: #b095bf; font-size: 8px; font-weight: 700; letter-spacing: .14em; }
 .compose-header h2 { font-size: 25px; font-weight: 800; line-height: 1.25; letter-spacing: -.04em; margin-top: 8px; color: #674087; }
 .compose-header-copy > p:last-child { font-size: 11px; margin-top: 6px; line-height: 1.6; color: #a187b0; }
@@ -47,7 +68,9 @@
 .compose-amount > label { display: block; font-size: 11px; font-weight: 600; color: #a184b5; margin-bottom: 8px; }
 .compose-amount > div { display: flex; align-items: center; gap: 7px; max-width: 270px; margin-inline: auto; }
 .compose-amount > div > span { font-size: 21px; color: #b092c5; font-weight: 650; }
-.compose-amount input { width: 100%; min-width: 0; min-height: 44px; background: transparent; font-size: 33px; line-height: 1.2; font-weight: 750; letter-spacing: -.04em; font-variant-numeric: tabular-nums; color: #704596; text-align: center; border-radius: 8px; }
+.compose-amount input { width: 100%; min-width: 0; min-height: 44px; background: transparent; border: 0; border-radius: 0; box-shadow: none; font-size: 33px; line-height: 1.2; font-weight: 750; letter-spacing: -.04em; font-variant-numeric: tabular-nums; color: #704596; caret-color: #704596; text-align: center; }
+.transaction-compose .compose-amount input:focus-visible { outline: none; box-shadow: none; }
+.compose-amount:focus-within > label { color: #795293; font-weight: 700; }
 .compose-amount input::placeholder { color: #d7c3e7; }
 .compose-amount > p { font-size: 10px; color: #b29bc0; margin-top: 9px; }
 .compose-group { min-width: 0; margin: 0; padding: 0; border: 0; }

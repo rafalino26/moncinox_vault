@@ -3,7 +3,7 @@
 import { useState, useRef, ChangeEvent } from 'react';
 import Image from 'next/image';
 import { FiX, FiArrowUpRight, FiBookmark } from 'react-icons/fi';
-import { StitchSaving } from './StitchMotion';
+import { StitchActionLabel } from './StitchMotion';
 import { updateTransaction } from '@/app/actions/transactionActions';
 import type { Transaction } from '@prisma/client';
 import { useWallet } from './WalletContext';
@@ -265,13 +265,10 @@ export default function EditTransactionModal({
           <button
             type="submit"
             disabled={isSubmitting}
+            aria-busy={isSubmitting}
             className="w-full py-3.5 px-4 bg-gradient-to-r from-[#5c2799] to-[#743ab7] hover:from-[#4b1d83] hover:to-[#5c2799] text-white font-bold rounded-xl shadow-lg shadow-purple-600/30 transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed min-h-[48px]"
           >
-            {isSubmitting ? (
-              <StitchSaving />
-            ) : (
-              <span>Simpan Perubahan</span>
-            )}
+            <StitchActionLabel pending={isSubmitting}>Simpan Perubahan</StitchActionLabel>
           </button>
         </form>
       </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { FiX } from 'react-icons/fi';
-import { StitchSaving } from './StitchMotion';
+import { StitchActionLabel } from './StitchMotion';
 import { addUangSaku } from '@/app/actions/transactionActions';
 import { useWallet } from './WalletContext';
 import { useState, useRef, ChangeEvent } from 'react';
@@ -140,13 +140,10 @@ export default function AddUangSakuModal({
           <button
             type="submit"
             disabled={isSubmitting}
+            aria-busy={isSubmitting}
             className="w-full py-3 px-4 bg-gradient-to-r from-[#5c2799] to-[#743ab7] hover:from-[#4b1d83] hover:to-[#5c2799] text-white font-bold rounded-xl shadow-md shadow-purple-600/30 transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed h-[46px]"
           >
-            {isSubmitting ? (
-              <StitchSaving />
-            ) : (
-              <span>Tambah Uang Saku!</span>
-            )}
+            <StitchActionLabel pending={isSubmitting}>Tambah Uang Saku!</StitchActionLabel>
           </button>
         </form>
       </div>

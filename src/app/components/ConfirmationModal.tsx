@@ -1,6 +1,7 @@
 'use client';
 
-import { FiAlertTriangle, FiLoader } from "react-icons/fi";
+import { FiAlertTriangle } from "react-icons/fi";
+import { StitchActionLabel } from './StitchMotion';
 import { useState, useRef } from "react";
 
 interface ModalProps {
@@ -44,8 +45,8 @@ export default function ConfirmationModal({ title, message, onConfirm, onCancel,
                     <button onClick={onCancel} disabled={isLoading} className="w-full p-2 text-slate-700 bg-slate-200 rounded-lg font-semibold hover:bg-slate-300">
                         Batal
                     </button>
-                    <button onClick={handleConfirm} disabled={isLoading} className={`w-full p-2 text-white rounded-lg font-semibold ${tone === 'violet' ? 'bg-purple-700 hover:bg-purple-800 disabled:bg-purple-400' : 'bg-red-600 hover:bg-red-700 disabled:bg-red-400'}`}>
-                        {isLoading ? <FiLoader className="animate-spin mx-auto" /> : 'Ya, Hapus'}
+                    <button onClick={handleConfirm} disabled={isLoading} aria-busy={isLoading} className={`w-full min-h-[48px] p-2 text-white rounded-lg font-semibold ${tone === 'violet' ? 'bg-purple-700 hover:bg-purple-800 disabled:bg-purple-400' : 'bg-red-600 hover:bg-red-700 disabled:bg-red-400'}`}>
+                        <StitchActionLabel pending={isLoading} pendingLabel="Menghapus…">Ya, Hapus</StitchActionLabel>
                     </button>
                 </div>
             </div>
