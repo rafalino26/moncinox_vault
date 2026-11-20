@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
+import PwaControls from './PwaControls';
 
 const navItems = [
   { href: '/', label: 'Dashboard' },
@@ -38,6 +39,8 @@ export default function Navbar() {
               />
             </div>
           </Link>
+
+          <PwaControls />
 
           {/* Desktop Navigation (Layar Lebih Besar) */}
           <nav aria-label="Navigasi utama" className="glass-nav glass-nav-desktop hidden md:grid">
