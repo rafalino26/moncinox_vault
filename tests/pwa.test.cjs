@@ -8,13 +8,13 @@ const loadModule = require('./helpers/load-ts.cjs');
 function worker(fetcher = async () => new Response('network')) {
   const listeners = {};
   const stores = new Map();
-  const key = request => typeof request === 'string' ? request : request.url;
+  const key = request => { const url = new URL(typeof request === 'string' ? request : request.url, 'https://vault.test'); return url.pathname + url.search; };
   const caches = {
     async open(name) {
       if (!stores.has(name)) stores.set(name, new Map());
       const store = stores.get(name);
       return {
-        async addAll(requests) { for (const request of requests) store.set(new URL(key(request), 'https://vault.test').pathname, new Response('precache')); },
+        async addAll(requests) { for (const request of requests) store.set(key(request), new Response(`precache:${key(request)}`)); },
         async match(request) { return store.get(key(request))?.clone(); },
         async put(request, response) { store.set(key(request), response); },
         async keys() { return [...store.keys()]; },
@@ -26,7 +26,8 @@ function worker(fetcher = async () => new Response('network')) {
   };
   class WorkerRequest extends Request { constructor(url, options) { super(new URL(url, 'https://vault.test'), options); } }
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../public/sw.js'), 'utf8'), {
-    self: { location: { origin: 'https://vault.test' }, clients: { claim: async () => {} }, addEventListener: (name, listener) => { listeners[name] = listener; } },
+    self: { MONCINOX_PWA_BUILD: { id: 'test', pages: { '/': '/offline-pages/dashboard.html', '/pengeluaran': '/offline-pages/pengeluaran.html', '/pemasukan': '/offline-pages/pemasukan.html' }, assets: ['/_next/static/app.js', '/rafa.png'] }, location: { origin: 'https://vault.test' }, clients: { claim: async () => {} }, addEventListener: (name, listener) => { listeners[name] = listener; } },
+    importScripts: () => {},
     caches, fetch: fetcher, URL, Request: WorkerRequest, Response,
   });
   return {
@@ -64,10 +65,13 @@ test('service worker never intercepts financial APIs, writes, RSC, or external r
   ]) assert.equal(sw.request(url, options), undefined);
 });
 
-test('offline navigation gets a precached fallback and online HTML is never cached', async () => {
+test('offline navigation uses the normal page shell, preserving the requested route and filters', async () => {
   const sw = worker(async () => { throw new Error('offline'); });
   await sw.lifecycle('install');
-  assert.equal(await (await sw.request('/pengeluaran', { mode: 'navigate' })).text(), 'precache');
+  for (const [route, page] of [['/', 'dashboard'], ['/pengeluaran?rentang=semua', 'pengeluaran'], ['/pemasukan/', 'pemasukan']]) {
+    assert.equal(await (await sw.request(route, { mode: 'navigate' })).text(), `precache:/offline-pages/${page}.html`);
+  }
+  assert.equal(await (await sw.request('/unknown', { mode: 'navigate' })).text(), 'precache:/offline.html');
   assert.equal([...sw.stores.values()].some(store => store.has('/pengeluaran')), false);
   const online = worker(async () => new Response('fresh HTML'));
   assert.equal(await (await online.request('/', { mode: 'navigate' })).text(), 'fresh HTML');
@@ -98,5 +102,13 @@ test('activation removes only obsolete Moncinox caches', async () => {
   await sw.lifecycle('activate');
   assert.equal(sw.stores.has('moncinox-pwa-shell-old'), false);
   assert.equal(sw.stores.has('another-app'), true);
-  assert.equal(sw.stores.has('moncinox-pwa-shell-v2'), true);
+  assert.equal(sw.stores.has('moncinox-pwa-shell-v3-test'), true);
+});
+
+test('preloaded chunks survive runtime eviction and image optimizer requests fall back to local artwork', async () => {
+  const sw = worker(async () => { throw Error('offline'); });
+  await sw.lifecycle('install');
+  assert.equal(await (await sw.request('/_next/static/app.js')).text(), 'precache:/_next/static/app.js');
+  assert.equal(await (await sw.request('/_next/image?url=%2Frafa.png&w=64&q=75')).text(), 'precache:/rafa.png');
+  assert.equal(sw.request('/_next/image?url=https%3A%2F%2Fother.test%2Fprivate.png'), undefined);
 });

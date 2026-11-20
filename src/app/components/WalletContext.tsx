@@ -64,7 +64,7 @@ export function FinanceCacheNotice() {
   const dates = resources.flatMap(item => item.lastUpdated ? [item.lastUpdated] : []);
   const oldest = dates.length ? Math.min(...dates) : null;
   return <aside className="finance-cache-notice" role="status">
-    <strong>{offline ? 'Offline · hanya bisa dibaca' : 'Menampilkan data tersimpan'}</strong>
+    <strong>{offline ? 'Sedang offline · menampilkan data tersimpan' : 'Menampilkan data tersimpan'}</strong>
     <span>{oldest ? `Data terakhir diperbarui ${new Date(oldest).toLocaleString('id-ID')}.` : 'Belum ada data tersimpan untuk halaman ini.'} {offline ? 'Hubungkan internet untuk menyimpan perubahan.' : 'Data terbaru akan dimuat saat koneksi tersedia.'}</span>
   </aside>;
 }
@@ -72,7 +72,11 @@ export function FinanceCacheNotice() {
 function useResource<T>(resource: Resource<T>) {
   const snapshot = useSyncExternalStore(resource.subscribe, resource.getSnapshot, resource.getServerSnapshot);
   useEffect(() => { void resource.load(); }, [resource]);
-  return { ...snapshot, isLoading: snapshot.data === undefined, retry: () => resource.load(true) };
+  // Saved data is the expected offline state; the shared notice already explains it.
+  const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+  const error = offline ? (snapshot.data !== undefined ? null : snapshot.error
+    ? 'Belum ada data tersimpan untuk halaman ini. Buka halaman ini saat online terlebih dahulu.' : null) : snapshot.error;
+  return { ...snapshot, error, isLoading: snapshot.data === undefined, retry: () => resource.load(true) };
 }
 
 export function useWalletsData() { return useResource(useFinanceStore().wallets); }

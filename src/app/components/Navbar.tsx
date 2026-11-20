@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from './OfflineLink';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 import PwaControls from './PwaControls';

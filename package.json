@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && next build && node scripts/generate-pwa-shell.cjs",
     "start": "next start",
     "typecheck": "tsc --noEmit --incremental false",
     "test:wallet": "node --test tests/wallet.test.cjs",

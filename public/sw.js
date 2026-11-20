@@ -1,10 +1,12 @@
-// Increment the version when changing precached files or the cache policy.
+// The generated import changes with every build, so worker updates also track deployments.
+importScripts('/pwa-build.js');
+const BUILD = self.MONCINOX_PWA_BUILD;
 const PREFIX = 'moncinox-pwa-';
-const VERSION = 'v2';
+const VERSION = `v3-${BUILD.id}`;
 const SHELL = `${PREFIX}shell-${VERSION}`;
 const ASSETS = `${PREFIX}assets-${VERSION}`;
 const OFFLINE = '/offline.html';
-const PRECACHE = [OFFLINE, '/offline-store.js', '/offline-reader.js', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon-maskable-512.png', '/icons/apple-touch-icon.png', '/stickers/stitchblue3.png'];
+const PRECACHE = [...new Set([OFFLINE, '/offline-store.js', '/offline-reader.js', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon-maskable-512.png', '/icons/apple-touch-icon.png', '/stickers/stitchblue3.png', ...Object.values(BUILD.pages), ...BUILD.assets])];
 const MAX_ASSETS = 80;
 
 self.addEventListener('install', event => {
@@ -26,7 +28,7 @@ async function staticAsset(request) {
   let cache;
   try {
     cache = await caches.open(ASSETS);
-    const cached = await cache.match(request);
+    const cached = await caches.open(SHELL).then(shell => shell.match(request)) || await cache.match(request);
     if (cached) return cached;
   } catch { /* Storage can be unavailable; the network still works. */ }
   const response = await fetch(request);
@@ -51,7 +53,9 @@ self.addEventListener('fetch', event => {
   if (request.mode === 'navigate') {
     event.respondWith(fetch(request).catch(async () => {
       try {
-        const cached = await caches.open(SHELL).then(cache => cache.match(OFFLINE));
+        const route = url.pathname === '/' ? '/' : url.pathname.replace(/\/$/, '');
+        const cached = await caches.open(SHELL).then(async cache =>
+          (BUILD.pages[route] && await cache.match(BUILD.pages[route])) || await cache.match(OFFLINE));
         if (cached) return cached;
       } catch { /* Fall back even when device storage is unavailable. */ }
       return new Response('Koneksi terputus. Sambungkan internet lalu muat ulang halaman.', {
@@ -61,7 +65,17 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  if (url.pathname.startsWith('/_next/static/')) {
+  if (url.pathname === '/_next/image') {
+    // Reuse original cached artwork if the image optimizer cannot be reached offline.
+    const original = url.searchParams.get('url');
+    if (original && BUILD.assets.includes(original)) {
+      event.respondWith(fetch(request).catch(async () => {
+        const image = await caches.open(SHELL).then(cache => cache.match(original));
+        if (image) return image;
+        throw new Error('Offline image unavailable');
+      }));
+    }
+  } else if (url.pathname.startsWith('/_next/static/')) {
     event.respondWith(staticAsset(request));
   } else if (!url.search && PRECACHE.includes(url.pathname)) {
     event.respondWith(caches.open(SHELL).then(cache => cache.match(request)).catch(() => undefined).then(cached => cached || fetch(request)));

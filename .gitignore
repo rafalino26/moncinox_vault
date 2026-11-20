@@ -18,6 +18,8 @@
 /.next-preview/
 /.next-build-preview/
 /out/
+/public/pwa-build.js
+/public/offline-pages/
 
 # production
 /build

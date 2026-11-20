@@ -7,8 +7,10 @@ PWA menggunakan manifest bawaan Next.js, service worker kecil tanpa dependency t
 - Manifest `/manifest.webmanifest`, ikon 192/512, maskable, dan Apple touch icon.
 - Mode standalone serta tombol “Pasang app” pada navbar. Browser yang menyediakan prompt memakai prompt asli; lainnya mendapatkan panduan manual termasuk Safari iPhone/iPad.
 - Registrasi service worker hanya pada production dan secure context (HTTPS atau localhost).
-- Pembaca offline mandiri tanpa React/API server, dengan ringkasan saldo, riwayat pengeluaran/tabungan dan pemasukan, pencarian, filter orang, serta pagination. JavaScript lokal dan gambar pendukung diprecache bersama halaman offline.
-- Cache hanya untuk aset statis Next.js (maksimum 80 entri) serta aset offline yang masuk daftar eksplisit. API keuangan, POST/Server Actions, HTML halaman aplikasi, dan payload RSC tidak disimpan oleh service worker.
+- Offline menggunakan UI React yang sama dengan dashboard, pengeluaran, dan pemasukan, dengan pemberitahuan “Sedang offline” di atas. Shell HTML statis build, JavaScript (termasuk chunk grafik), CSS, font, logo, avatar, dan sticker yang dipakai diprecache. Pembaca mandiri sebelumnya tetap menjadi fallback untuk rute yang tidak dikenali.
+- `npm run build` membuat `/pwa-build.js` dan `/offline-pages/*.html` melalui `scripts/generate-pwa-shell.cjs`. Generator hanya menerima tiga rute yang benar-benar statis menurut prerender manifest; tidak menyimpan HTML hasil request pengguna. File hasil build diabaikan Git. Worker mengimpor identitas build sehingga deployment baru menghasilkan versi cache baru otomatis.
+- API keuangan, POST/Server Actions, dan payload RSC tetap melewati jaringan. Cache aset inti dipertahankan untuk satu versi build; cache runtime tambahan dibatasi 80 entri. Optimized image yang gagal di jaringan memakai original artwork lokal. Cache versi lama dibersihkan setelah worker baru aktif.
+- Link tab/navbar saat offline menggunakan navigasi dokumen ke shell yang diprecache, menghindari request RSC yang akan gagal. Filter dalam halaman tetap berjalan lokal. Saat online link Next.js berfungsi seperti biasa.
 - Salinan data di IndexedDB setelah GET berhasil atau respons CRUD sudah committed. Restore berjalan paralel dengan network sehingga disk tidak menghambat data baru. Restore lambat tidak boleh menimpa hasil network atau mutation baru.
 - Waktu pembaruan setiap dataset ditampilkan di pembaca offline; aplikasi utama menampilkan pemberitahuan cache/koneksi dengan waktu paling lama dari dataset yang sedang tersedia.
 
@@ -20,14 +22,14 @@ Dataset tersimpan hanya setelah pernah berhasil dimuat: dashboard menyimpan wall
 
 Jika storage diblokir/penuh, aplikasi online tetap berjalan; pembaca offline menjelaskan data yang tidak tersedia. Cache browser/IndexedDB bisa dihapus perangkat atau pengguna. Pemasangan tidak mempercepat query server.
 
-Worker baru menunggu jendela lama ditutup sebelum aktif; tidak ada reload otomatis saat pengguna sedang mengisi form. Ubah `VERSION` di `public/sw.js` jika aset precache atau kebijakan cache berubah. Cache Moncinox versi lama dibersihkan saat aktivasi. Cache browser dapat dihapus oleh pengguna/perangkat.
+Worker baru menunggu jendela lama ditutup sebelum aktif; tidak ada reload otomatis saat pengguna sedang mengisi form. Cache browser dapat dihapus oleh pengguna/perangkat. Instalasi worker baru berhasil hanya bila semua aset shell selesai diunduh; jika gagal, worker lama tetap tersedia. Perubahan akun/login di masa depan juga harus mempertahankan aturan bahwa HTML shell tidak mengandung data personal.
 
 ## Verifikasi
 
 1. `npm run typecheck` dan `npm test`.
-2. `npm run build`, lalu `npm start` (bukan dev). Atau gunakan `NEXT_DIST_DIR` yang sama untuk build/start terpisah.
+2. `npm run build`, lalu `npm start` (bukan dev). Atau gunakan `NEXT_DIST_DIR` yang sama untuk build/start terpisah. Jangan melewati generator post-build: jika menjalankan `next build` langsung, lanjutkan dengan `node scripts/generate-pwa-shell.cjs` sebelum start/deploy.
 3. Buka production HTTPS atau localhost. DevTools Application: periksa manifest, ikon, worker aktif, scope `/`, dan cache `moncinox-pwa-*`.
-4. Buka dashboard, pengeluaran, dan pemasukan saat online; tunggu data selesai dimuat. Setelah worker v2 aktif (tutup semua jendela aplikasi lalu buka kembali), aktifkan mode pesawat dan muat ulang `/`, `/pengeluaran`, `/pemasukan`: pembaca offline harus menampilkan salinan saldo dan riwayat beserta waktu pembaruan. Uji pencarian/filter/pagination, serta dataset kosong atau belum pernah dibuka. Pada tab aplikasi utama yang masih terbuka, indikator data offline muncul; submit tambah/edit/hapus harus ditolak tanpa sukses palsu.
+4. Buka dashboard, pengeluaran, dan pemasukan saat online; tunggu data selesai dimuat dan worker selesai memasang cache. Tutup semua jendela aplikasi lalu buka kembali untuk aktivasi. Aktifkan mode pesawat dan muat ulang `/`, `/pengeluaran`, `/pemasukan`: UI normal harus muncul dengan salinan data dan banner offline. Uji perpindahan tab, pencarian/filter/pagination, grafik yang belum dibuka, font/avatar/sticker, serta dataset kosong atau belum pernah dimuat. Submit tambah/edit/hapus harus ditolak tanpa sukses palsu.
 5. Online kembali: “Coba buka lagi” mengakses dashboard. API harus tetap melewati network dan tidak muncul dalam Cache Storage.
 6. Uji pemasangan Chrome Android dan Safari iPhone melalui menu Bagikan → Add to Home Screen. Periksa ikon, standalone, safe area, modal, dan navigasi. HTTP LAN biasa tidak cukup untuk pengujian worker pada HP; gunakan HTTPS.
 7. Deploy versi baru saat form terbuka: tidak boleh memuat ulang tab secara otomatis. Tutup seluruh jendela app, buka kembali untuk mengaktifkan worker baru.
