@@ -6,6 +6,7 @@ import { addUangSaku } from '@/app/actions/transactionActions';
 import { useWallet } from './WalletContext';
 import { useState, useRef, ChangeEvent } from 'react';
 import Image from 'next/image';
+import { offlineWriteError } from '../lib/connection';
 
 interface ModalProps {
   person: 'Saya' | 'Pacar_Saya';
@@ -38,6 +39,8 @@ export default function AddUangSakuModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (submitLock.current) return;
+    const offlineError = offlineWriteError();
+    if (offlineError) { setErrorMessage(offlineError); return; }
     if (!realValue || Number(realValue) <= 0) {
       setErrorMessage('Nominal wajib diisi!');
       return;

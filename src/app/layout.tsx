@@ -4,7 +4,7 @@ import './globals.css';
 import Navbar from './components/Navbar';
 import BottomNav from './components/BottomNav';
 import GlobalFABModal from './components/GlobalFABModal';
-import { WalletProvider } from './components/WalletContext';
+import { WalletProvider, FinanceCacheNotice } from './components/WalletContext';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -30,6 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <WalletProvider>
           <Navbar />
           <main className="max-w-5xl mx-auto p-3 sm:p-6 lg:p-8 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:pb-16 overflow-x-hidden">
+            <FinanceCacheNotice />
             {children}
           </main>
 

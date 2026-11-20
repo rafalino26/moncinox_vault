@@ -3,6 +3,7 @@
 import { FiAlertTriangle } from "react-icons/fi";
 import { StitchActionLabel } from './StitchMotion';
 import { useState, useRef } from "react";
+import { offlineWriteError } from '../lib/connection';
 
 interface ModalProps {
     title: string;
@@ -19,6 +20,8 @@ export default function ConfirmationModal({ title, message, onConfirm, onCancel,
 
     const handleConfirm = async () => {
         if (submitLock.current) return;
+        const offlineError = offlineWriteError();
+        if (offlineError) { setError(offlineError); return; }
         submitLock.current = true;
         setError(null);
         setIsLoading(true);

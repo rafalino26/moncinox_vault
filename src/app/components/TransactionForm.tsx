@@ -1,4 +1,5 @@
 'use client';
+import { offlineWriteError } from '../lib/connection';
 
 import { useWallet } from './WalletContext';
 import { useRef, useState, ChangeEvent } from 'react';
@@ -34,6 +35,8 @@ export default function TransactionForm({ onSuccess }: { onSuccess: () => void }
 
     const handleFormSubmit = async (formData: FormData) => {
         if (submitLock.current) return;
+        const offlineError = offlineWriteError();
+        if (offlineError) { setStatus({ type: 'error', message: offlineError }); return; }
         submitLock.current = true;
         setStatus(null);
         try {

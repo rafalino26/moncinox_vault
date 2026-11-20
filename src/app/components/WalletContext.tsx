@@ -5,14 +5,15 @@ import type { Wallet, Transaction, Pemasukan } from '@prisma/client';
 import { createResource, fetchJson, type Resource } from '../lib/resource';
 import { replaceWallet, prependSavedTransaction, type WalletsState } from '../lib/wallet-state';
 import { StitchFeedbackProvider, useStitchFeedback } from './StitchFeedback';
+import { createFinancePersistence } from '../../../public/offline-store';
 
 export type { WalletsState } from '../lib/wallet-state';
 
 function createFinanceStore() {
   return {
-    wallets: createResource(() => fetchJson<WalletsState>('/api/web/wallets')),
-    transactions: createResource(() => fetchJson<Transaction[]>('/api/web/transactions')),
-    income: createResource(() => fetchJson<Pemasukan[]>('/api/web/income')),
+    wallets: createResource(() => fetchJson<WalletsState>('/api/web/wallets'), 30_000, createFinancePersistence<WalletsState>('wallets')),
+    transactions: createResource(() => fetchJson<Transaction[]>('/api/web/transactions'), 30_000, createFinancePersistence<Transaction[]>('transactions')),
+    income: createResource(() => fetchJson<Pemasukan[]>('/api/web/income'), 30_000, createFinancePersistence<Pemasukan[]>('income')),
   };
 }
 
@@ -43,6 +44,29 @@ function useFinanceStore() {
   const store = useContext(WalletContext);
   if (!store) throw new Error('Gunakan di dalam WalletProvider');
   return store;
+}
+
+export function FinanceCacheNotice() {
+  const store = useFinanceStore();
+  const wallets = useSyncExternalStore(store.wallets.subscribe, store.wallets.getSnapshot, store.wallets.getServerSnapshot);
+  const transactions = useSyncExternalStore(store.transactions.subscribe, store.transactions.getSnapshot, store.transactions.getServerSnapshot);
+  const income = useSyncExternalStore(store.income.subscribe, store.income.getSnapshot, store.income.getServerSnapshot);
+  const [offline, setOffline] = useState(false);
+  useEffect(() => {
+    const update = () => setOffline(!navigator.onLine);
+    update();
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+    return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update); };
+  }, []);
+  const resources = [wallets, transactions, income].filter(item => item.data !== undefined);
+  if (!offline && !resources.some(item => item.fromCache)) return null;
+  const dates = resources.flatMap(item => item.lastUpdated ? [item.lastUpdated] : []);
+  const oldest = dates.length ? Math.min(...dates) : null;
+  return <aside className="finance-cache-notice" role="status">
+    <strong>{offline ? 'Offline · hanya bisa dibaca' : 'Menampilkan data tersimpan'}</strong>
+    <span>{oldest ? `Data terakhir diperbarui ${new Date(oldest).toLocaleString('id-ID')}.` : 'Belum ada data tersimpan untuk halaman ini.'} {offline ? 'Hubungkan internet untuk menyimpan perubahan.' : 'Data terbaru akan dimuat saat koneksi tersedia.'}</span>
+  </aside>;
 }
 
 function useResource<T>(resource: Resource<T>) {

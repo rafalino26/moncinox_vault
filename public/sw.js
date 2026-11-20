@@ -1,10 +1,10 @@
 // Increment the version when changing precached files or the cache policy.
 const PREFIX = 'moncinox-pwa-';
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL = `${PREFIX}shell-${VERSION}`;
 const ASSETS = `${PREFIX}assets-${VERSION}`;
 const OFFLINE = '/offline.html';
-const PRECACHE = [OFFLINE, '/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon-maskable-512.png', '/icons/apple-touch-icon.png', '/stickers/stitchblue3.png'];
+const PRECACHE = [OFFLINE, '/offline-store.js', '/offline-reader.js', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon-maskable-512.png', '/icons/apple-touch-icon.png', '/stickers/stitchblue3.png'];
 const MAX_ASSETS = 80;
 
 self.addEventListener('install', event => {

@@ -1,21 +1,44 @@
+import type { FinancePersistence } from '../../../public/offline-store';
+
 export type ResourceSnapshot<T> = {
   data: T | undefined;
   error: string | null;
   isRefreshing: boolean;
+  lastUpdated: number | null;
+  fromCache: boolean;
 };
 
-// One in-memory resource per provider, shared across routes. Never persisted to disk.
-export function createResource<T>(fetcher: () => Promise<T>, staleMs = 30_000) {
-  let snapshot: ResourceSnapshot<T> = { data: undefined, error: null, isRefreshing: false };
+// Disk restore runs alongside the network, never in front of it.
+export function createResource<T>(fetcher: () => Promise<T>, staleMs = 30_000, persistence?: FinancePersistence<T>) {
+  let snapshot: ResourceSnapshot<T> = { data: undefined, error: null, isRefreshing: false, lastUpdated: null, fromCache: false };
   const serverSnapshot = snapshot;
   const listeners = new Set<() => void>();
   let updatedAt = 0;
   let revision = 0;
   let inFlight: Promise<void> | undefined;
+  let restored: Promise<void> | undefined;
 
   const publish = (next: ResourceSnapshot<T>) => {
     snapshot = next;
     listeners.forEach(listener => listener());
+  };
+
+  const persist = () => {
+    if (persistence && snapshot.data !== undefined && snapshot.lastUpdated !== null) {
+      // Persist only successful reads/committed writes, never empty error fallbacks.
+      void persistence.write({ version: 1, data: snapshot.data, updatedAt: snapshot.lastUpdated }).catch(() => {});
+    }
+  };
+  const restore = () => {
+    if (!restored) {
+      const startedRevision = revision;
+      restored = (persistence?.read() ?? Promise.resolve(undefined)).then(record => {
+        if (record && snapshot.data === undefined && revision === startedRevision) {
+          publish({ ...snapshot, data: record.data, lastUpdated: record.updatedAt, fromCache: true });
+        }
+      }).catch(() => {});
+    }
+    return restored;
   };
 
   const load = (force = false): Promise<void> => {
@@ -23,11 +46,14 @@ export function createResource<T>(fetcher: () => Promise<T>, staleMs = 30_000) {
     if (!force && snapshot.data !== undefined && Date.now() - updatedAt < staleMs) return Promise.resolve();
     const startedRevision = revision;
     publish({ ...snapshot, isRefreshing: true });
+    void restore();
     inFlight = Promise.resolve().then(fetcher).then(data => {
       if (revision !== startedRevision) return;
       updatedAt = Date.now();
-      publish({ data, error: null, isRefreshing: false });
-    }).catch(error => {
+      publish({ data, error: null, isRefreshing: false, lastUpdated: updatedAt, fromCache: false });
+      persist();
+    }).catch(async error => {
+      await restore();
       if (revision !== startedRevision) return;
       publish({ ...snapshot, error: error instanceof Error ? error.message : 'Gagal memuat data.', isRefreshing: false });
     }).finally(() => {
@@ -53,7 +79,8 @@ export function createResource<T>(fetcher: () => Promise<T>, staleMs = 30_000) {
       revision++;
       if (snapshot.data !== undefined) {
         updatedAt = Date.now();
-        publish({ ...snapshot, data: update(snapshot.data), error: null });
+        publish({ ...snapshot, data: update(snapshot.data), error: null, lastUpdated: updatedAt });
+        persist();
       }
     },
   };
@@ -62,6 +89,7 @@ export function createResource<T>(fetcher: () => Promise<T>, staleMs = 30_000) {
 export type Resource<T> = ReturnType<typeof createResource<T>>;
 
 export async function fetchJson<T>(url: string): Promise<T> {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new Error('Sedang offline. Menampilkan data tersimpan jika tersedia.');
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15_000);
   try {

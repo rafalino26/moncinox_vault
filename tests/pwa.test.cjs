@@ -98,5 +98,5 @@ test('activation removes only obsolete Moncinox caches', async () => {
   await sw.lifecycle('activate');
   assert.equal(sw.stores.has('moncinox-pwa-shell-old'), false);
   assert.equal(sw.stores.has('another-app'), true);
-  assert.equal(sw.stores.has('moncinox-pwa-shell-v1'), true);
+  assert.equal(sw.stores.has('moncinox-pwa-shell-v2'), true);
 });

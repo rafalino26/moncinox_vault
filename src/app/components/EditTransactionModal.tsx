@@ -7,6 +7,7 @@ import { StitchActionLabel } from './StitchMotion';
 import { updateTransaction } from '@/app/actions/transactionActions';
 import type { Transaction } from '@prisma/client';
 import { useWallet } from './WalletContext';
+import { offlineWriteError } from '../lib/connection';
 
 interface EditTransactionModalProps {
   transaction: Transaction;
@@ -49,6 +50,8 @@ export default function EditTransactionModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (submitLock.current) return;
+    const offlineError = offlineWriteError();
+    if (offlineError) { setErrorMessage(offlineError); return; }
     if (!realValue || Number(realValue) <= 0) {
       setErrorMessage('Nominal wajib diisi!');
       return;

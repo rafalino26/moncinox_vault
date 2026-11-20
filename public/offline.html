@@ -5,23 +5,58 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f5efff">
   <title>Sedang offline · Moncinox Vault</title>
+  <script src="/offline-store.js" defer></script>
+  <script src="/offline-reader.js" defer></script>
   <style>
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100svh; display: grid; place-items: center; padding: 24px; background: linear-gradient(#f5efff, #ebe0fa); color: #674087; font: 16px/1.6 system-ui, sans-serif; text-align: center; }
-    main { max-width: 340px; }
-    img { display: block; width: 112px; height: 136px; object-fit: contain; margin: 0 auto 24px; }
+    body { margin: 0; min-height: 100svh; padding: 24px 16px calc(24px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(#f5efff, #ebe0fa); color: #674087; font: 16px/1.6 system-ui, sans-serif; }
+    main { max-width: 680px; margin: auto; }
+    header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+    img { display: block; flex-shrink: 0; width: 60px; height: 73px; object-fit: contain; }
     h1 { font-size: 25px; line-height: 1.3; margin: 0 0 12px; }
-    p { color: #8a709d; font-size: 14px; margin: 0 0 24px; }
-    a { display: inline-block; padding: 12px 24px; border-radius: 16px; background: #8657ad; color: white; text-decoration: none; font-weight: 650; }
-    a:focus-visible { outline: 3px solid #b28ccf; outline-offset: 4px; }
+    p { color: #8a709d; font-size: 13px; margin: 0 0 12px; }
+    a, button, input, select { font: inherit; }
+    button, a { display: inline-block; padding: 10px 14px; border: 1px solid #dfcdec; border-radius: 14px; background: #fffbff; color: #795099; text-decoration: none; font-size: 12px; font-weight: 650; cursor: pointer; }
+    button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid #b28ccf; outline-offset: 3px; }
+    #reconnect { background: #8657ad; color: white; width: 100%; margin-bottom: 16px; }
+    nav { display: flex; gap: 6px; margin-bottom: 16px; }
+    nav button { flex: 1; padding-inline: 6px; }
+    button[aria-pressed="true"] { background: #8657ad; border-color: #8657ad; color: white; }
+    .wallets { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+    .wallet, section { padding: 16px; border-radius: 22px; background: #fffbffe6; border: 1px solid #eee1f8; min-width: 0; }
+    .wallet strong { display: block; font-size: 18px; overflow-wrap: anywhere; }
+    .stamp { font-size: 10px; color: #967ca8; line-height: 1.6; }
+    h2 { font-size: 17px; margin: 0 0 6px; }
+    .filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+    input, select { min-width: 0; max-width: 100%; border: 1px solid #e6d7f1; background: #f8f1fd; border-radius: 12px; padding: 10px; color: #674087; font-size: 14px; }
+    input { flex: 1 1 140px; }
+    ul { list-style: none; padding: 0; margin: 0; }
+    li { border-top: 1px solid #f0e6f7; padding: 12px 0; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    li div { min-width: 0; }
+    li b { display: block; font-size: 13px; overflow-wrap: anywhere; }
+    li small { color: #a089af; font-size: 11px; }
+    li strong { font-size: 13px; flex-shrink: 0; }
+    #more { width: 100%; margin-top: 12px; }
+    footer { padding-top: 18px; }
+    footer p { font-size: 11px; }
+    [hidden] { display: none !important; }
   </style>
 </head>
 <body>
   <main>
-    <img src="/stickers/stitchblue3.png" alt="" width="112" height="136">
-    <h1>Lagi offline</h1>
-    <p>Sambungkan internet untuk melihat saldo dan mencatat transaksi lagi.</p>
-    <a href="/">Coba buka lagi</a>
+    <header><img src="/stickers/stitchblue3.png" alt="" width="60" height="73"><div><h1>Lagi offline</h1><p id="connection" role="status">Data tersimpan · hanya bisa dibaca.</p></div></header>
+    <button id="reconnect" type="button">Coba hubungkan lagi</button>
+    <noscript><p>Aktifkan JavaScript untuk membaca data tersimpan.</p><a href="/">Coba buka lagi</a></noscript>
+    <div id="reader" hidden>
+      <nav aria-label="Data offline"><button type="button" data-view="summary">Ringkasan</button><button type="button" data-view="transactions">Pengeluaran</button><button type="button" data-view="income">Pemasukan</button></nav>
+      <div id="wallets" class="wallets"></div>
+      <section aria-labelledby="history-title">
+        <h2 id="history-title">Riwayat tersimpan</h2><p id="stamp" class="stamp"></p>
+        <div class="filters"><input id="search" type="search" aria-label="Cari catatan tersimpan" placeholder="Cari catatan…"><select id="person" aria-label="Filter pemilik catatan"><option value="all">Berdua</option><option value="Saya">Puskasw</option><option value="Pacar_Saya">Miskasw</option></select></div>
+        <p id="empty" role="status">Membaca data tersimpan…</p><ul id="rows"></ul><button id="more" type="button" hidden>Lihat lebih banyak</button>
+      </section>
+    </div>
+    <footer><p>Salinan terakhir dari perangkat ini. Saldo dan catatan bisa berbeda dari data terbaru. Menambah, mengedit, dan menghapus tetap membutuhkan internet.</p><button id="clear" type="button" hidden>Hapus salinan offline di HP ini</button><p id="storage-status" role="status"></p></footer>
   </main>
 </body>
 </html>

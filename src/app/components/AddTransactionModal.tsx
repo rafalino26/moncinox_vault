@@ -7,6 +7,7 @@ import { StitchActionLabel } from './StitchMotion';
 import { addTransaction } from '@/app/actions/transactionActions';
 import { useWallet } from './WalletContext';
 import { useSwipeDismiss } from '../lib/use-swipe-dismiss';
+import { offlineWriteError } from '../lib/connection';
 
 interface AddTransactionModalProps {
   isOpen: boolean;
@@ -52,6 +53,8 @@ export default function AddTransactionModal({ isOpen, onClose }: AddTransactionM
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (submitLock.current) return;
+    const offlineError = offlineWriteError();
+    if (offlineError) { setErrorMessage(offlineError); return; }
     if (!realValue || Number(realValue) <= 0) {
       setErrorMessage('Nominal wajib diisi!');
       return;

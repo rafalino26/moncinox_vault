@@ -11,7 +11,6 @@ interface InstallPrompt extends Event {
 export default function PwaControls() {
   const [ready, setReady] = useState(false);
   const [installed, setInstalled] = useState(false);
-  const [offline, setOffline] = useState(false);
   const [ios, setIos] = useState(false);
   const [prompt, setPrompt] = useState<InstallPrompt | null>(null);
   const [installing, setInstalling] = useState(false);
@@ -20,16 +19,12 @@ export default function PwaControls() {
   useEffect(() => {
     const standalone = window.matchMedia('(display-mode: standalone)');
     const checkInstalled = () => setInstalled(standalone.matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone));
-    const checkConnection = () => setOffline(!navigator.onLine);
     const onPrompt = (event: Event) => { event.preventDefault(); setPrompt(event as InstallPrompt); };
     const onInstalled = () => { setInstalled(true); setPrompt(null); dialog.current?.close(); };
     checkInstalled();
-    checkConnection();
     setIos(/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
     setReady(true);
     standalone.addEventListener('change', checkInstalled);
-    window.addEventListener('online', checkConnection);
-    window.addEventListener('offline', checkConnection);
     window.addEventListener('beforeinstallprompt', onPrompt);
     window.addEventListener('appinstalled', onInstalled);
 
@@ -39,8 +34,6 @@ export default function PwaControls() {
     }
     return () => {
       standalone.removeEventListener('change', checkInstalled);
-      window.removeEventListener('online', checkConnection);
-      window.removeEventListener('offline', checkConnection);
       window.removeEventListener('beforeinstallprompt', onPrompt);
       window.removeEventListener('appinstalled', onInstalled);
     };
@@ -60,7 +53,6 @@ export default function PwaControls() {
     {ready && !installed && <button type="button" className="pwa-install-button" onClick={install} disabled={installing}>
       <FiDownload aria-hidden="true" /><span>{installing ? 'Memasang…' : 'Pasang app'}</span>
     </button>}
-    {offline && <div className="pwa-offline-notice" role="status">Sedang offline · Hubungkan internet untuk menyimpan perubahan.</div>}
     <dialog ref={dialog} className="pwa-install-dialog" aria-labelledby="pwa-install-title" onClick={event => { if (event.target === event.currentTarget) dialog.current?.close(); }}>
       <div className="pwa-install-heading"><h2 id="pwa-install-title">Pasang Moncinox</h2><button type="button" onClick={() => dialog.current?.close()} aria-label="Tutup panduan pemasangan"><FiX aria-hidden="true" /></button></div>
       <p>Buka langsung dari layar utama HP.</p>
