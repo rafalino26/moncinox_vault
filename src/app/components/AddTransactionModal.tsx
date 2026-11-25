@@ -4,10 +4,8 @@ import { useId, useState, useRef, ChangeEvent } from 'react';
 import Image from 'next/image';
 import { FiX, FiArrowUpRight, FiBookmark, FiCheck, FiCalendar } from 'react-icons/fi';
 import { StitchActionLabel } from './StitchMotion';
-import { addTransaction } from '@/app/actions/transactionActions';
-import { useWallet } from './WalletContext';
+import { useOfflineTransactions } from './WalletContext';
 import { useSwipeDismiss } from '../lib/use-swipe-dismiss';
-import { offlineWriteError } from '../lib/connection';
 
 interface AddTransactionModalProps {
   isOpen: boolean;
@@ -15,7 +13,7 @@ interface AddTransactionModalProps {
 }
 
 export default function AddTransactionModal({ isOpen, onClose }: AddTransactionModalProps) {
-  const { addSavedTransaction } = useWallet();
+  const queue = useOfflineTransactions();
   const formId = useId();
   const panel = useRef<HTMLDivElement>(null);
   const [displayValue, setDisplayValue] = useState('');
@@ -53,8 +51,6 @@ export default function AddTransactionModal({ isOpen, onClose }: AddTransactionM
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (submitLock.current) return;
-    const offlineError = offlineWriteError();
-    if (offlineError) { setErrorMessage(offlineError); return; }
     if (!realValue || Number(realValue) <= 0) {
       setErrorMessage('Nominal wajib diisi!');
       return;
@@ -71,21 +67,7 @@ export default function AddTransactionModal({ isOpen, onClose }: AddTransactionM
     submitLock.current = true;
 
     try {
-      const formData = new FormData();
-      formData.set('jumlah', realValue);
-      formData.set('tipe', tipe);
-      formData.set('sumber', sumber);
-      formData.set('keterangan', note);
-      formData.set('tanggal', tanggal);
-
-      const result = await addTransaction(formData);
-
-      if (!result.success) {
-        setErrorMessage(result.error ?? 'Gagal menyimpan transaksi.');
-        setIsSubmitting(false);
-      } else {
-        // The write response already contains the committed balance and real ID.
-        addSavedTransaction(result.transaction, result.wallet);
+      await queue.enqueue({ jumlah: Number(realValue), tipe, sumber, keterangan: note, tanggal });
 
         // Reset state
         setDisplayValue('');
@@ -95,11 +77,11 @@ export default function AddTransactionModal({ isOpen, onClose }: AddTransactionM
         setSumber('Saya');
         setIsSubmitting(false);
         
-        // Wallet, summary, and history update together before closing.
+        // Closing means local durability; the queue explicitly reports server acknowledgement.
         onClose();
-      }
+        void queue.sync();
     } catch (err) {
-      setErrorMessage('Terjadi kesalahan saat menyimpan transaksi.');
+      setErrorMessage(err instanceof Error ? err.message : 'Catatan belum tersimpan. Jangan tutup form; coba lagi.');
     } finally {
       submitLock.current = false;
       setIsSubmitting(false);

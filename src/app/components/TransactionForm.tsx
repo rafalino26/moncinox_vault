@@ -1,9 +1,7 @@
 'use client';
-import { offlineWriteError } from '../lib/connection';
 
-import { useWallet } from './WalletContext';
+import { useOfflineTransactions } from './WalletContext';
 import { useRef, useState, ChangeEvent } from 'react';
-import { addTransaction } from "@/app/actions/transactionActions";
 import CustomDropdown from "./CustomDropdown";
 import NotificationPopup from './NotificationPopup';
 import SubmitButton from './SubmitButton';
@@ -11,7 +9,7 @@ import SubmitButton from './SubmitButton';
 export default function TransactionForm({ onSuccess }: { onSuccess: () => void }) {
     const formRef = useRef<HTMLFormElement>(null);
     const inputClass = "w-full p-3 bg-white/50 border border-black/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d9b3ff] text-base min-h-[44px]";
-    const { addSavedTransaction } = useWallet();
+    const queue = useOfflineTransactions();
     const submitLock = useRef(false);
     const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const [displayValue, setDisplayValue] = useState('');
@@ -35,8 +33,6 @@ export default function TransactionForm({ onSuccess }: { onSuccess: () => void }
 
     const handleFormSubmit = async (formData: FormData) => {
         if (submitLock.current) return;
-        const offlineError = offlineWriteError();
-        if (offlineError) { setStatus({ type: 'error', message: offlineError }); return; }
         submitLock.current = true;
         setStatus(null);
         try {
@@ -52,19 +48,16 @@ export default function TransactionForm({ onSuccess }: { onSuccess: () => void }
         formData.set('jumlah', realValue);
         formData.set('sumber', sumber);
 
-        const result = await addTransaction(formData);
-
-        if (result?.error) {
-            setStatus({ type: 'error', message: result.error });
-        } else {
-            if (result.success) addSavedTransaction(result.transaction, result.wallet);
-            setStatus({ type: 'success', message: 'Data berhasil ditambahkan!' });
+        if (sumber !== 'Saya' && sumber !== 'Pacar_Saya') throw Error('Sumber tidak valid');
+        await queue.enqueue({ jumlah: Number(realValue), sumber, tipe: isTabungan ? 'tabungan' : 'pengeluaran',
+            tanggal: String(formData.get('tanggal') || ''), keterangan: String(formData.get('keterangan') || '') });
+            setStatus({ type: 'success', message: 'Tersimpan di HP. Menunggu sinkronisasi.' });
             formRef.current?.reset();
             setDisplayValue('');
             setRealValue('');
             setSumber('Saya');
             onSuccess();
-        }
+            void queue.sync();
         } catch {
             setStatus({ type: 'error', message: 'Gagal menyimpan transaksi. Silakan coba lagi.' });
         } finally {

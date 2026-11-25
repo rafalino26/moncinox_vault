@@ -72,6 +72,13 @@ export function createResource<T>(fetcher: () => Promise<T>, staleMs = 30_000, p
       return () => { listeners.delete(listener); };
     },
     load,
+    refreshAfterWrite: async () => {
+      // A GET already in flight may predate the committed queued write.
+      revision++;
+      updatedAt = 0;
+      if (inFlight) await inFlight;
+      await load(true);
+    },
     revalidateIfLoaded: () => {
       if (snapshot.data !== undefined || snapshot.error !== null) void load(snapshot.error !== null);
     },

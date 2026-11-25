@@ -46,3 +46,11 @@ model Pemasukan {
   sumber    Sumber // 'Saya' atau 'Pacar_Saya' untuk tahu siapa yang dapat pemasukan
   createdAt DateTime @default(now())
 }
+
+// Durable delivery receipt survives transaction deletion; retries never recreate it.
+model OfflineTransactionReceipt {
+  id            String   @id
+  payload       String
+  transactionId String
+  createdAt     DateTime @default(now())
+}

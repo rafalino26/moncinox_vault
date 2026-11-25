@@ -6,6 +6,8 @@ import { createResource, fetchJson, type Resource } from '../lib/resource';
 import { replaceWallet, prependSavedTransaction, type WalletsState } from '../lib/wallet-state';
 import { StitchFeedbackProvider, useStitchFeedback } from './StitchFeedback';
 import { createFinancePersistence } from '../../../public/offline-store';
+import { createOfflineQueue } from '../lib/offline-queue';
+import { queueStorage } from '../lib/offline-queue-storage';
 
 export type { WalletsState } from '../lib/wallet-state';
 
@@ -18,9 +20,56 @@ function createFinanceStore() {
 }
 
 const WalletContext = createContext<ReturnType<typeof createFinanceStore> | null>(null);
+const OfflineQueueContext = createContext<ReturnType<typeof createOfflineQueue> | null>(null);
+
+export function useOfflineTransactions() {
+  const queue = useContext(OfflineQueueContext);
+  if (!queue) throw Error('Antrean memerlukan WalletProvider');
+  return queue;
+}
+
+function QueueFeedback() {
+  const queue = useOfflineTransactions();
+  const status = useSyncExternalStore(queue.subscribe, queue.getSnapshot, queue.getServerSnapshot);
+  const celebrate = useStitchFeedback();
+  useEffect(() => { if (status.lastSynced) celebrate('Catatan sudah tersinkron!'); }, [status.lastSynced, celebrate]);
+  return null;
+}
 
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [store] = useState(createFinanceStore);
+  const [queue] = useState(() => createOfflineQueue(queueStorage, async item => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+      const response = await fetch('/api/web/offline-transactions', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.id, transaction: item.transaction }), signal: controller.signal,
+      });
+      const body = await response.json();
+      // A redirected/proxy HTML response or malformed success must never acknowledge the queue.
+      const ok = response.ok && body.id === item.id && [200, 201].includes(body.status);
+      return { ok, retryable: response.status !== 400 && response.status !== 409, error: body.error || 'Server belum mengonfirmasi pengiriman.' };
+    } finally { clearTimeout(timeout); }
+  }, async () => {
+    await Promise.all([store.wallets.refreshAfterWrite(), store.transactions.refreshAfterWrite()]);
+    if (store.wallets.getSnapshot().error || store.transactions.getSnapshot().error) throw Error('Refresh belum berhasil');
+  }, () => navigator.onLine !== false));
+  useEffect(() => {
+    const retry = () => { if (document.visibilityState === 'visible') void queue.sync(); };
+    let channel: BroadcastChannel | null = null;
+    try { if (typeof BroadcastChannel !== 'undefined') channel = new BroadcastChannel('moncinox-outbox'); } catch { /* Polling still recovers queue changes. */ }
+    if (channel) channel.onmessage = () => { void queue.reload(); };
+    void queue.sync();
+    window.addEventListener('online', retry);
+    window.addEventListener('focus', retry);
+    document.addEventListener('visibilitychange', retry);
+    const timer = window.setInterval(retry, 30000);
+    return () => {
+      window.removeEventListener('online', retry); window.removeEventListener('focus', retry);
+      document.removeEventListener('visibilitychange', retry); window.clearInterval(timer); channel?.close();
+    };
+  }, [queue]);
   useEffect(() => {
     const revalidate = () => {
       if (document.visibilityState !== 'visible') return;
@@ -37,7 +86,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       window.clearInterval(timer);
     };
   }, [store]);
-  return <WalletContext.Provider value={store}><StitchFeedbackProvider>{children}</StitchFeedbackProvider></WalletContext.Provider>;
+  return <WalletContext.Provider value={store}><OfflineQueueContext.Provider value={queue}><StitchFeedbackProvider><QueueFeedback />{children}</StitchFeedbackProvider></OfflineQueueContext.Provider></WalletContext.Provider>;
 }
 
 function useFinanceStore() {
@@ -48,6 +97,8 @@ function useFinanceStore() {
 
 export function FinanceCacheNotice() {
   const store = useFinanceStore();
+  const queue = useOfflineTransactions();
+  const outbox = useSyncExternalStore(queue.subscribe, queue.getSnapshot, queue.getServerSnapshot);
   const wallets = useSyncExternalStore(store.wallets.subscribe, store.wallets.getSnapshot, store.wallets.getServerSnapshot);
   const transactions = useSyncExternalStore(store.transactions.subscribe, store.transactions.getSnapshot, store.transactions.getServerSnapshot);
   const income = useSyncExternalStore(store.income.subscribe, store.income.getSnapshot, store.income.getServerSnapshot);
@@ -60,12 +111,22 @@ export function FinanceCacheNotice() {
     return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update); };
   }, []);
   const resources = [wallets, transactions, income].filter(item => item.data !== undefined);
-  if (!offline && !resources.some(item => item.fromCache)) return null;
+  if (!offline && !resources.some(item => item.fromCache) && !outbox.items.length && !outbox.error && !outbox.lastSynced) return null;
   const dates = resources.flatMap(item => item.lastUpdated ? [item.lastUpdated] : []);
   const oldest = dates.length ? Math.min(...dates) : null;
   return <aside className="finance-cache-notice" role="status">
-    <strong>{offline ? 'Sedang offline · menampilkan data tersimpan' : 'Menampilkan data tersimpan'}</strong>
-    <span>{oldest ? `Data terakhir diperbarui ${new Date(oldest).toLocaleString('id-ID')}.` : 'Belum ada data tersimpan untuk halaman ini.'} {offline ? 'Hubungkan internet untuk menyimpan perubahan.' : 'Data terbaru akan dimuat saat koneksi tersedia.'}</span>
+    <strong>{outbox.syncing ? 'Mengirim catatan…' : offline ? 'Sedang offline · menampilkan data tersimpan' : outbox.items.length ? 'Ada catatan belum tersinkron' : outbox.lastSynced ? 'Catatan sudah tersinkron' : 'Menampilkan data tersimpan'}</strong>
+    <span>{oldest ? `Data terakhir diperbarui ${new Date(oldest).toLocaleString('id-ID')}.` : 'Belum ada data tersimpan untuk halaman ini.'} {offline ? 'Tambah transaksi bisa disimpan di HP. Edit, hapus, dan pemasukan masih perlu internet.' : 'Saldo dompet mengikuti data server terakhir.'}</span>
+    {outbox.error && <span role="alert">{outbox.error}</span>}
+    {outbox.items.length > 0 && <>
+      <span>{outbox.items.length} catatan di antrean · Total Rp {new Intl.NumberFormat('id-ID').format(outbox.items.reduce((sum, item) => sum + item.transaction.jumlah, 0))}. Catatan antrean belum dihitung dalam ringkasan; saldo server belum tentu mencakup pengiriman yang belum terkonfirmasi.</span>
+      <details><summary>Lihat antrean transaksi</summary><ul className="offline-queue-list">{outbox.items.map(item => <li key={item.id}>
+        <strong>{item.transaction.keterangan}</strong><span>{item.transaction.sumber === 'Saya' ? 'Puskasw' : 'Miskasw'} · Rp {new Intl.NumberFormat('id-ID').format(item.transaction.jumlah)} · {item.state === 'blocked' ? 'Perlu diperiksa' : 'Belum tersinkron'}</span>
+        {item.error && <span>{item.error}</span>}
+        {item.state === 'blocked' && <button type="button" className="offline-queue-retry" disabled={offline || outbox.syncing} onClick={() => { void queue.retryBlocked(item.id).catch(() => queue.reload()); }}>Coba ulang catatan ini</button>}
+      </li>)}</ul></details>
+    </>}
+    {(outbox.items.length > 0 || outbox.error) && <button type="button" className="offline-queue-retry" disabled={offline || outbox.syncing} onClick={() => { void queue.sync(); }}>{offline ? 'Menunggu internet' : 'Coba sinkronkan'}</button>}
   </aside>;
 }
 
