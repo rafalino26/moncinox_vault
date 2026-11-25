@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import type { Transaction } from '@prisma/client';
 import { FiBarChart2, FiList, FiUsers } from 'react-icons/fi';
 import { deleteTransaction } from '../actions/transactionActions';
-import { useTransactionsData, useWallet } from './WalletContext';
+import { useTransactionsData, useWallet, useTransactionHistory, HistoryQueueError } from './WalletContext';
 import { filterTransactions } from '../lib/transaction-filters';
 import { groupTransactionsByDay } from '../lib/transaction-groups';
 import { calendarDateKey, calendarDateLabel } from '../lib/dates';
@@ -26,6 +26,7 @@ const LedgerChart = dynamic(() => import('./ledger/LedgerChart'), { ssr: false,
 
 export default function TransactionView() {
   const transactionData = useTransactionsData();
+  const history = useTransactionHistory(transactionData.data ?? []);
   const { removeSavedTransaction } = useWallet();
   const { filters, update, tipe } = useLedgerQuery();
   const searchParams = useSearchParams();
@@ -41,6 +42,9 @@ export default function TransactionView() {
   const filtered = useMemo(() => filterTransactions(transactionData.data ?? [], JSON.parse(filterKey)).filter(transaction =>
     !search || transaction.keterangan.toLowerCase().includes(search) ||
     calendarDateLabel(calendarDateKey(transaction.tanggal)).toLowerCase().includes(search)), [transactionData.data, filterKey, search]);
+  const historyRows = useMemo(() => filterTransactions(history, JSON.parse(filterKey)).filter(transaction =>
+    !search || transaction.keterangan.toLowerCase().includes(search) ||
+    calendarDateLabel(calendarDateKey(transaction.tanggal)).toLowerCase().includes(search)), [history, filterKey, search]);
   useEffect(() => { setVisibleCount(50); }, [filterKey, search]);
   const totals = useMemo(() => filtered.reduce((sum, transaction) => {
     sum[transaction.tipe] += transaction.jumlah; return sum;
@@ -60,7 +64,7 @@ export default function TransactionView() {
     } catch { setMutationError('Gagal menghapus transaksi. Silakan coba lagi.'); }
     setTransactionToDelete(null);
   };
-  const count = view === 'perbandingan' ? comparison.length : filtered.length;
+  const count = view === 'perbandingan' ? comparison.length : historyRows.length;
   if (transactionData.isLoading && !transactionData.error) return <StitchLoading centered />;
   return <div className="ledger-page">
     <LedgerHero title="Pengeluaran" subtitle="jangan borosw borosw" label={tipe === 'semua' ? 'Pengeluaran & tabungan' : tipe === 'tabungan' ? 'Total tabungan' : 'Total pengeluaran'}
@@ -77,10 +81,11 @@ export default function TransactionView() {
         {[{ value: 'tabel', label: 'Daftar', icon: FiList }, { value: 'grafik', label: 'Grafik', icon: FiBarChart2 }, { value: 'perbandingan', label: 'Berdua', icon: FiUsers }].map(item =>
           <button type="button" key={item.value} aria-pressed={view === item.value} onClick={() => update('view', item.value)}><item.icon aria-hidden="true" />{item.label}</button>)}
       </div>
-      {transactionData.data && (view === 'grafik' ? <LedgerChart entries={entries} /> : <>
-        <div className="ledger-section-heading"><h2>{view === 'perbandingan' ? 'Perbandingan' : 'Riwayat transaksi'}</h2><span>{filtered.length} catatan</span></div>
+      <HistoryQueueError />
+      {(transactionData.data || historyRows.length > 0) && (view === 'grafik' ? <LedgerChart entries={entries} /> : <>
+        <div className="ledger-section-heading"><h2>{view === 'perbandingan' ? 'Perbandingan' : 'Riwayat transaksi'}</h2><span>{view === 'perbandingan' ? filtered.length : historyRows.length} catatan</span></div>
         {view === 'perbandingan' ? <ComparisonTable data={comparison.slice(0, visibleCount)} summary={comparisonSummary} onDetailClick={setDetailDate} /> :
-          <PengeluaranTable data={filtered.slice(0, visibleCount)} onDelete={setTransactionToDelete} onEdit={setTransactionToEdit} totalPengeluaran={totals.pengeluaran} totalTabungan={totals.tabungan} />}
+          <PengeluaranTable data={historyRows.slice(0, visibleCount)} onDelete={setTransactionToDelete} onEdit={setTransactionToEdit} totalPengeluaran={totals.pengeluaran} totalTabungan={totals.tabungan} />}
         {count > visibleCount && <button type="button" className="ledger-load-more" onClick={() => setVisibleCount(value => value + 50)}>Lihat lebih banyak · {Math.min(visibleCount, count)} dari {count}</button>}
       </>)}
     </section>

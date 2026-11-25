@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useWalletsData, useTransactionsData } from './WalletContext';
+import { useWalletsData, useTransactionsData, useTransactionHistory, HistoryQueueError } from './WalletContext';
 import DataStatus from './DataStatus';
 import StatCards from './StatCards';
 import CollapsibleSection from './CollapsibleSection';
@@ -19,6 +19,7 @@ export default function DashboardView() {
   const walletData = useWalletsData();
   const transactionData = useTransactionsData();
   const transactions = transactionData.data ?? [];
+  const history = useTransactionHistory(transactions);
 
   if (walletData.isLoading && transactionData.isLoading && !walletData.error && !transactionData.error) {
     return <StitchLoading centered />;
@@ -26,7 +27,7 @@ export default function DashboardView() {
 
   // History (Riwayat Transaksi Terbaru) dari state lokal (supaya bisa optimistic update)
   const transactionList = (
-    <TransactionList transactions={filterTransactions(transactions, { rentang: 'bulanan' }).slice(0, 10)} />
+    <TransactionList transactions={filterTransactions(history, { rentang: 'bulanan' }).slice(0, 10)} />
   );
 
   return (
@@ -43,9 +44,9 @@ export default function DashboardView() {
       {/* 1. Kartu Dompet Kembar (Puskasw & Miskasw) Langsung di Atas */}
       {walletData.data && <StatCards wallets={walletData.data} />}
 
-      {transactionData.data && <>
+      {(transactionData.data || history.length > 0) && <>
       {/* 2. Spending Analysis (Chevron < MODE > & Swipeable dengan Watermark Stitch) */}
-      <SpendingAnalysis transactions={transactions} />
+      {transactionData.data && <SpendingAnalysis transactions={transactions} />}
 
       {/* 3. History (Riwayat Transaksi Terbaru) */}
       <div className="space-y-3">
@@ -55,6 +56,7 @@ export default function DashboardView() {
           </h2>
           <p className="text-xs text-slate-400 font-medium">Last 30 Days</p>
         </div>
+        <HistoryQueueError />
         {transactionList}
       </div>
 
