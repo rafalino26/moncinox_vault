@@ -34,8 +34,17 @@ test('blocked delivery keeps its error visible on the affected history row', () 
   assert.equal(result[0].syncError, 'Perlu diperiksa');
 });
 
+test('only known unsent local drafts have edit permission; server rows and legacy items stay locked', () => {
+  const draft = { ...item, attempted: false, revision: 1 };
+  assert.equal(mergeTransactionHistory([], [draft])[0].syncEditable, true);
+  assert.equal(mergeTransactionHistory([], [{ ...draft, attempted: true }])[0].syncEditable, false);
+  assert.equal(mergeTransactionHistory([], [item])[0].syncEditable, false);
+  const server = { ...item.transaction, id: item.id, tanggal: new Date(item.transaction.tanggal), createdAt: new Date(item.createdAt) };
+  assert.equal(mergeTransactionHistory([server], [draft])[0].syncEditable, false);
+});
+
 test('pending expense rows show clock/status and cannot edit or delete a record not committed yet', () => {
-  const table = loadModule('src/app/pengeluaran/components/PengeluaranTable.tsx').default;
+  const table = loadModule('src/app/pengeluaran/components/PengeluaranTable.tsx', { '../../components/QueuedTransactionActions': () => null }).default;
   const pending = mergeTransactionHistory([], [item]);
   const element = table({ data: pending, onDelete: () => assert.fail(), onEdit: () => assert.fail(), totalPengeluaran: 0, totalTabungan: 0 });
   const nodes = [];

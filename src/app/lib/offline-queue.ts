@@ -1,8 +1,9 @@
 import { parseTransactionDate } from './dates';
 
 export type PendingInput = { jumlah: number; sumber: 'Saya' | 'Pacar_Saya'; tipe: 'pengeluaran' | 'tabungan'; tanggal: string; keterangan: string };
-export type QueuedTransaction = { id: string; transaction: PendingInput; createdAt: number; state: 'waiting' | 'blocked'; error?: string };
-type Storage = { list(): Promise<QueuedTransaction[]>; add(item: QueuedTransaction): Promise<unknown>; put(item: QueuedTransaction): Promise<unknown>; remove(id: string): Promise<unknown> };
+export type QueuedTransaction = { id: string; transaction: PendingInput; createdAt: number; state: 'waiting' | 'blocked'; error?: string; attempted?: boolean; revision?: number };
+type Storage = { list(): Promise<QueuedTransaction[]>; add(item: QueuedTransaction): Promise<unknown>; put(item: QueuedTransaction): Promise<unknown>; remove(id: string): Promise<unknown>;
+  change(id: string, update: (item: QueuedTransaction | undefined) => QueuedTransaction | null | undefined): Promise<QueuedTransaction | null | undefined> };
 type Delivery = { ok: boolean; retryable: boolean; error?: string };
 function normalizePending(input: unknown): PendingInput | null {
   if (!input || typeof input !== 'object') return null;
@@ -16,6 +17,8 @@ function normalizePending(input: unknown): PendingInput | null {
 function validStored(item: QueuedTransaction) {
   return item && typeof item.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(item.id) &&
     Number.isFinite(item.createdAt) && item.createdAt > 0 && ['waiting', 'blocked'].includes(item.state) &&
+    (item.attempted === undefined || typeof item.attempted === 'boolean') &&
+    (item.revision === undefined || (Number.isSafeInteger(item.revision) && item.revision > 0)) &&
     (item.error === undefined || typeof item.error === 'string') && normalizePending(item.transaction) !== null;
 }
 
@@ -43,9 +46,13 @@ export function createOfflineQueue(storage: Storage, send: (item: QueuedTransact
       let delivered = false;
       try {
         // Snapshot the batch; anything added during sync is picked up on the next pass.
-        for (const item of snapshot.items) {
+        for (const candidate of snapshot.items) {
           if (!online()) break;
-          if (item.state === 'blocked') continue;
+          // The atomic durable claim races safely with editing/canceling in another tab.
+          const item = await storage.change(candidate.id, current => current && current.state !== 'blocked'
+            ? { ...current, attempted: true } : undefined);
+          if (!item) continue;
+          await reload();
           let result: Delivery;
           try { result = await send(item); }
           catch { result = { ok: false, retryable: true, error: 'Koneksi terputus. Akan dicoba lagi dengan ID yang sama.' }; }
@@ -75,6 +82,27 @@ export function createOfflineQueue(storage: Storage, send: (item: QueuedTransact
     getSnapshot: () => snapshot, getServerSnapshot: () => serverSnapshot,
     subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
     reload, sync,
+    async edit(id: string, input: PendingInput, expectedRevision: number) {
+      const transaction = normalizePending(input);
+      if (!transaction) throw Error('Nominal, tanggal, atau keterangan tidak valid.');
+      await storage.change(id, item => {
+        if (!item) throw Error('Catatan sudah tidak ada di antrean.');
+        if (item.attempted !== false) throw Error('Catatan sudah mulai dikirim. Tunggu konfirmasi server sebelum mengedit.');
+        if (item.revision !== expectedRevision) throw Error('Catatan berubah di tab lain. Tutup form dan buka lagi.');
+        return { ...item, transaction, revision: item.revision + 1, error: undefined, state: 'waiting' };
+      });
+      await reload();
+      if (running) addedDuringSync = true;
+    },
+    async cancel(id: string, expectedRevision: number) {
+      await storage.change(id, item => {
+        if (!item) throw Error('Catatan sudah tidak ada di antrean.');
+        if (item.attempted !== false) throw Error('Catatan sudah mulai dikirim. Tunggu konfirmasi server sebelum membatalkan.');
+        if (item.revision !== expectedRevision) throw Error('Catatan berubah di tab lain. Tutup dialog dan buka lagi.');
+        return null;
+      });
+      await reload();
+    },
     async retryBlocked(id: string) {
       const item = (await storage.list()).find(item => item.id === id && item.state === 'blocked');
       if (item) await storage.put({ ...item, state: 'waiting', error: undefined });
@@ -83,7 +111,7 @@ export function createOfflineQueue(storage: Storage, send: (item: QueuedTransact
     async enqueue(input: PendingInput) {
       const transaction = normalizePending(input);
       if (!transaction) throw Error('Nominal, tanggal, atau keterangan tidak valid. Periksa form.');
-      const item: QueuedTransaction = { id: crypto.randomUUID(), transaction, createdAt: Date.now(), state: 'waiting' };
+      const item: QueuedTransaction = { id: crypto.randomUUID(), transaction, createdAt: Date.now(), state: 'waiting', attempted: false, revision: 1 };
       // Resolve only after IDB transaction commits. No false offline-success on quota errors.
       await storage.add(item);
       if (running) addedDuringSync = true;

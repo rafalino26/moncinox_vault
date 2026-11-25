@@ -1,6 +1,7 @@
 import type { HistoryTransaction } from '../lib/transaction-history';
 import Image from 'next/image';
 import { FiClock, FiTrendingDown, FiTrendingUp } from 'react-icons/fi';
+import QueuedTransactionActions from './QueuedTransactionActions';
 
 export default function TransactionList({ transactions }: { transactions: HistoryTransaction[] }) {
   return (
@@ -34,6 +35,7 @@ export default function TransactionList({ transactions }: { transactions: Histor
                 </p>
                 {t.syncState && <span className="history-sync-status">{t.syncState === 'blocked' ? 'Perlu diperiksa' : 'Belum tersinkron'}</span>}
                 {t.syncState === 'blocked' && t.syncError && <p className="history-sync-error">{t.syncError}</p>}
+                {t.syncState && <QueuedTransactionActions transaction={t} />}
                 <p className="text-xs text-slate-400 font-medium truncate mt-1">
                   <span>{t.sumber === 'Saya' ? 'Puskasw' : 'Miskasw'}</span>
                   <span className="mx-1.5">•</span>

@@ -9,7 +9,12 @@ function storage(initial = []) {
   const items = new Map(initial.map(item => [item.id, structuredClone(item)]));
   return { items, list: async () => [...items.values()].map(item => structuredClone(item)),
     add: async item => { assert.equal(items.has(item.id), false); items.set(item.id, structuredClone(item)); },
-    put: async item => { items.set(item.id, structuredClone(item)); }, remove: async id => { items.delete(id); } };
+    put: async item => { items.set(item.id, structuredClone(item)); }, remove: async id => { items.delete(id); },
+    change: async (id, update) => {
+      const next = update(structuredClone(items.get(id)));
+      if (next === null) items.delete(id); else if (next !== undefined) items.set(id, structuredClone(next));
+      return structuredClone(next);
+    } };
 }
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
@@ -106,4 +111,66 @@ test('after acknowledgement, a GET started before the write cannot satisfy the c
   release(['before-write']); await oldRead; await refresh;
   assert.deepEqual(resource.getSnapshot().data, ['committed']);
   assert.equal(calls, 2);
+});
+
+test('an unsent draft can be edited offline with the same ID, and cancellation survives reopening', async () => {
+  const disk = storage(); const queue = createOfflineQueue(disk, async () => assert.fail(), async () => {}, () => false);
+  const saved = await queue.enqueue(input);
+  await queue.edit(saved.id, { ...input, jumlah: 50000, sumber: 'Pacar_Saya' }, 1);
+  const edited = queue.getSnapshot().items[0];
+  assert.equal(edited.id, saved.id); assert.equal(edited.revision, 2); assert.equal(edited.transaction.jumlah, 50000);
+  assert.equal(edited.attempted, false);
+  await queue.cancel(saved.id, 2);
+  const reopened = createOfflineQueue(disk, async () => assert.fail(), async () => {}, () => true);
+  await reopened.sync(); assert.equal(reopened.getSnapshot().items.length, 0);
+});
+
+test('stale edit/cancel from a second tab cannot overwrite a newer local revision', async () => {
+  const disk = storage(); const first = createOfflineQueue(disk, async () => assert.fail(), async () => {}, () => false);
+  const second = createOfflineQueue(disk, async () => assert.fail(), async () => {}, () => false);
+  const saved = await first.enqueue(input);
+  await first.edit(saved.id, { ...input, jumlah: 50000 }, 1);
+  await assert.rejects(second.edit(saved.id, { ...input, jumlah: 1000 }, 1), /tab lain/);
+  await assert.rejects(second.cancel(saved.id, 1), /tab lain/);
+  assert.equal(disk.items.get(saved.id).transaction.jumlah, 50000);
+});
+
+test('durable send claim prevents edits/cancel during flight and after an ambiguous lost response', async () => {
+  const disk = storage(); let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  const first = createOfflineQueue(disk, async () => { await gate; throw Error('lost response'); }, async () => {}, () => true);
+  const second = createOfflineQueue(disk, async () => assert.fail(), async () => {}, () => false);
+  const saved = await first.enqueue(input); const syncing = first.sync(); await tick();
+  assert.equal(disk.items.get(saved.id).attempted, true);
+  await assert.rejects(second.edit(saved.id, { ...input, jumlah: 1000 }, 1), /mulai dikirim/);
+  await assert.rejects(second.cancel(saved.id, 1), /mulai dikirim/);
+  release(); await syncing;
+  await assert.rejects(second.cancel(saved.id, 1), /mulai dikirim/);
+  assert.equal(disk.items.get(saved.id).transaction.jumlah, 25000);
+});
+
+test('sync reads the latest draft atomically and skips a draft canceled after batch enumeration', async () => {
+  const disk = storage(); const sent = [];
+  const queue = createOfflineQueue(disk, async item => { sent.push(item); return { ok: true }; }, async () => {}, () => true);
+  const first = await queue.enqueue(input); const second = await queue.enqueue(input);
+  const change = disk.change; let intercepted = false;
+  disk.change = async (id, update) => {
+    if (!intercepted) {
+      intercepted = true;
+      await change(first.id, current => ({ ...current, transaction: { ...current.transaction, jumlah: 50000 }, revision: 2 }));
+      await change(second.id, () => null);
+    }
+    return change(id, update);
+  };
+  await queue.sync();
+  assert.equal(sent.length, 1); assert.equal(sent[0].transaction.jumlah, 50000);
+  assert.equal(disk.items.size, 0);
+});
+
+test('legacy queued records without an attempt flag are conservatively locked but can still sync', async () => {
+  const disk = storage([{ id: randomUUID(), transaction: input, createdAt: Date.now(), state: 'waiting' }]);
+  const queue = createOfflineQueue(disk, async () => ({ ok: true }), async () => {}, () => true);
+  const id = [...disk.items.keys()][0];
+  await assert.rejects(queue.edit(id, input, 1), /mulai dikirim/);
+  await queue.sync(); assert.equal(disk.items.size, 0);
 });

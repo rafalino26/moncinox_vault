@@ -3,7 +3,7 @@ import type { QueuedTransaction } from './offline-queue';
 const DB = 'moncinox-outbox';
 const STORE = 'transactions';
 
-async function access<T>(mode: IDBTransactionMode, operation: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
+async function access<T>(mode: IDBTransactionMode, operation: (store: IDBObjectStore, tx: IDBTransaction) => IDBRequest<T>): Promise<T> {
   const db = await new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open(DB, 1);
     let expired = false;
@@ -19,7 +19,7 @@ async function access<T>(mode: IDBTransactionMode, operation: (store: IDBObjectS
   try {
     return await new Promise<T>((resolve, reject) => {
       const tx = db.transaction(STORE, mode);
-      const request = operation(tx.objectStore(STORE));
+      const request = operation(tx.objectStore(STORE), tx);
       tx.oncomplete = () => {
         if (mode === 'readwrite' && typeof BroadcastChannel !== 'undefined') {
           try {
@@ -39,4 +39,22 @@ export const queueStorage = {
   add: (item: QueuedTransaction) => access('readwrite', store => store.add(item)),
   put: (item: QueuedTransaction) => access('readwrite', store => store.put(item)),
   remove: (id: string) => access('readwrite', store => store.delete(id)),
+  async change(id: string, update: (item: QueuedTransaction | undefined) => QueuedTransaction | null | undefined) {
+    let result: QueuedTransaction | null | undefined;
+    let failure: unknown;
+    try {
+      await access('readwrite', (store, tx) => {
+        const request = store.get(id);
+        request.onsuccess = () => {
+          try {
+            result = update(request.result);
+            if (result === null) store.delete(id);
+            else if (result !== undefined) store.put(result);
+          } catch (error) { failure = error; tx.abort(); }
+        };
+        return request;
+      });
+    } catch (error) { throw failure || error; }
+    return result;
+  },
 };

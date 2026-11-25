@@ -41,7 +41,7 @@ test('expense chart distinguishes savings from expenses without treating savings
 });
 
 test('redesigned transaction rows keep accessible edit/delete actions connected to the correct record', () => {
-  const Table = load('src/app/pengeluaran/components/PengeluaranTable.tsx').default;
+  const Table = load('src/app/pengeluaran/components/PengeluaranTable.tsx', { '../../components/QueuedTransactionActions': () => null }).default;
   const transaction = { ...rows[0], tanggal: rows[0].createdAt, tipe: 'pengeluaran', keterangan: 'Makan bareng' };
   const calls = [];
   const tree = Table({ data: [transaction], totalPengeluaran: transaction.jumlah, totalTabungan: 0,

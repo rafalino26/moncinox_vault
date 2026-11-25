@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+.compose-confirm-message { font-size: 14px; line-height: 1.7; color: #79578d; overflow-wrap: anywhere; }
+.compose-confirm-actions { display: grid; grid-template-columns: minmax(0, .7fr) minmax(0, 1.3fr); gap: 10px; }
+.compose-secondary { min-height: 49px; border: 1px solid #e5d6f0; border-radius: 16px; background: #f7effc; color: #896b9d; font-size: 13px; font-weight: 650; cursor: pointer; }
+.history-local-actions { display: flex; flex-wrap: wrap; }
+.history-pending .history-local-actions button { color: #e1c9f4; }
+.history-pending .history-local-actions button:hover { background: #43384f; color: #fff; }
+
 .history-pending { background: #292330; border-color: #44394f; color: #f5edfc; }
 .history-pending:hover { background: #302939; }
 .history-pending p, .history-pending h3, .history-pending .ledger-amount { color: #f5edfc; }
