@@ -5,8 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import type { Transaction } from '@prisma/client';
 import { FiBarChart2, FiList, FiUsers } from 'react-icons/fi';
-import { deleteTransaction } from '../actions/transactionActions';
-import { useTransactionsData, useWallet, useTransactionHistory, HistoryQueueError } from './WalletContext';
+import { useTransactionsData, useOfflineTransactions, useTransactionHistory, HistoryQueueError } from './WalletContext';
+import { transactionInput } from '../lib/transaction-history';
 import { filterTransactions } from '../lib/transaction-filters';
 import { groupTransactionsByDay } from '../lib/transaction-groups';
 import { calendarDateKey, calendarDateLabel } from '../lib/dates';
@@ -27,7 +27,7 @@ const LedgerChart = dynamic(() => import('./ledger/LedgerChart'), { ssr: false,
 export default function TransactionView() {
   const transactionData = useTransactionsData();
   const history = useTransactionHistory(transactionData.data ?? []);
-  const { removeSavedTransaction } = useWallet();
+  const queue = useOfflineTransactions();
   const { filters, update, tipe } = useLedgerQuery();
   const searchParams = useSearchParams();
   const view = searchParams.get('view') || 'tabel';
@@ -57,11 +57,8 @@ export default function TransactionView() {
   const handleConfirmDelete = async () => {
     if (!transactionToDelete) return;
     setMutationError(null);
-    try {
-      const result = await deleteTransaction(transactionToDelete.id);
-      if (result.success) removeSavedTransaction(transactionToDelete.id, result.wallet);
-      else setMutationError(result.error ?? 'Gagal menghapus transaksi.');
-    } catch { setMutationError('Gagal menghapus transaksi. Silakan coba lagi.'); }
+    await queue.enqueue(transactionInput(transactionToDelete), 'delete', { id: transactionToDelete.id, expected: transactionInput(transactionToDelete) });
+    void queue.sync();
     setTransactionToDelete(null);
   };
   const count = view === 'perbandingan' ? comparison.length : historyRows.length;
@@ -89,7 +86,7 @@ export default function TransactionView() {
         {count > visibleCount && <button type="button" className="ledger-load-more" onClick={() => setVisibleCount(value => value + 50)}>Lihat lebih banyak · {Math.min(visibleCount, count)} dari {count}</button>}
       </>)}
     </section>
-    {transactionToDelete && <ConfirmationModal tone="violet" title="Hapus transaksi?" message={`Hapus “${transactionToDelete.keterangan}”? Saldo akan dikembalikan.`} onConfirm={handleConfirmDelete} onCancel={() => setTransactionToDelete(null)} />}
+    {transactionToDelete && <ConfirmationModal allowOffline tone="violet" title="Hapus transaksi?" message={`Hapus “${transactionToDelete.keterangan}”?`} onConfirm={handleConfirmDelete} onCancel={() => setTransactionToDelete(null)} />}
     {transactionToEdit && <EditTransactionModal transaction={transactionToEdit} onClose={() => setTransactionToEdit(null)} onSuccess={() => setTransactionToEdit(null)} />}
     {detailDate && <ComparisonDetailModal date={calendarDateLabel(detailDate)} transactions={filtered.filter(transaction => calendarDateKey(transaction.tanggal) === detailDate)} onClose={() => setDetailDate(null)} />}
   </div>;

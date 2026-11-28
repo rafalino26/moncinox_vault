@@ -16,8 +16,10 @@ const rollback = new Error('ROLLBACK_TEST_FIXTURES');
       const delivery = loadModule('src/app/lib/offline-delivery.ts', { './prisma': {
         $transaction: callback => callback({
           $executeRaw: (...args) => tx.$executeRaw(...args),
+          $queryRaw: (...args) => tx.$queryRaw(...args),
           offlineTransactionReceipt: tx.offlineTransactionReceipt,
           transaction: tx.transaction,
+          pemasukan: tx.pemasukan,
           // Only the uniquely named test wallet is changed. Real wallets are never updated.
           wallet: { update: args => tx.wallet.update({ ...args, where: { person } }) },
         }),
@@ -27,10 +29,23 @@ const rollback = new Error('ROLLBACK_TEST_FIXTURES');
       assert.equal((await delivery.deliverOfflineTransaction(input)).status, 200);
       assert.equal((await tx.wallet.findUnique({ where: { person } })).balance, 75000);
       assert.equal(await tx.transaction.count({ where: { id } }), 1);
-      await tx.transaction.delete({ where: { id } });
-      await tx.wallet.update({ where: { person }, data: { balance: { increment: 25000 } } });
+      const edit = { id: randomUUID(), kind: 'update', target: { id, expected: input.transaction }, transaction: { ...input.transaction, jumlah: 40000 } };
+      assert.equal((await delivery.deliverOfflineTransaction(edit)).status, 201);
+      assert.equal((await tx.wallet.findUnique({ where: { person } })).balance, 60000);
+      assert.equal((await delivery.deliverOfflineTransaction(edit)).status, 200);
+      const remove = { id: randomUUID(), kind: 'delete', transaction: edit.transaction, target: { id, expected: edit.transaction } };
+      assert.equal((await delivery.deliverOfflineTransaction(remove)).status, 201);
+      assert.equal((await delivery.deliverOfflineTransaction(remove)).status, 200);
       assert.equal((await delivery.deliverOfflineTransaction(input)).status, 200);
       assert.equal(await tx.transaction.count({ where: { id } }), 0);
+      assert.equal((await tx.wallet.findUnique({ where: { person } })).balance, 100000);
+      const income = { id: randomUUID(), kind: 'income-create', transaction: input.transaction };
+      assert.equal((await delivery.deliverOfflineTransaction(income)).status, 201);
+      assert.equal((await delivery.deliverOfflineTransaction(income)).status, 200);
+      assert.equal((await tx.wallet.findUnique({ where: { person } })).balance, 125000);
+      const deleteIncome = { id: randomUUID(), kind: 'income-delete', transaction: income.transaction, target: { id: income.id, expected: income.transaction } };
+      assert.equal((await delivery.deliverOfflineTransaction(deleteIncome)).status, 201);
+      assert.equal((await delivery.deliverOfflineTransaction(deleteIncome)).status, 200);
       assert.equal((await tx.wallet.findUnique({ where: { person } })).balance, 100000);
       throw rollback;
     }, { timeout: 30000 });

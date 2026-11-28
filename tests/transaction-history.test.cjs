@@ -18,6 +18,27 @@ test('history merges waiting rows without mutating committed balances/history in
   assert.equal(filterTransactions(result, { rentang: 'semua', sumber: 'Pacar_Saya' }).length, 0);
 });
 
+test('offline update/delete proposals replace the displayed target without duplicating committed rows', () => {
+  const server = { ...item.transaction, id: 'target', tanggal: new Date(item.transaction.tanggal), createdAt: new Date(0) };
+  const edit = { ...item, id: 'edit-op', kind: 'update', target: { id: server.id, expected: item.transaction }, transaction: { ...item.transaction, jumlah: 50000 }, attempted: false, revision: 1 };
+  const merged = mergeTransactionHistory([server], [edit]);
+  assert.equal(merged.length, 1); assert.equal(merged[0].jumlah, 50000); assert.equal(merged[0].syncQueueId, 'edit-op');
+  assert.equal(server.jumlah, 25000); assert.equal(merged[0].syncEditable, true);
+  const remove = mergeTransactionHistory([server], [{ ...edit, kind: 'delete' }]);
+  assert.equal(remove[0].jumlah, 25000); assert.equal(remove[0].syncKind, 'delete');
+});
+
+test('income and transaction pending histories stay separate and income acknowledgement has no duplicate', () => {
+  const { mergeIncomeHistory } = loadModule('src/app/lib/transaction-history.ts');
+  const income = { ...item, kind: 'income-create', attempted: false, revision: 1 };
+  assert.equal(mergeTransactionHistory([], [income]).length, 0);
+  assert.equal(mergeIncomeHistory([], [item]).length, 0);
+  assert.equal(mergeIncomeHistory([], [income])[0].syncEditable, true);
+  const server = { id: income.id, jumlah: 25000, sumber: 'Saya', createdAt: new Date(item.transaction.tanggal) };
+  const rows = mergeIncomeHistory([server], [income]);
+  assert.equal(rows.length, 1); assert.equal(rows[0].syncEditable, false);
+});
+
 test('server acknowledgement with a local item still present shows one row and preserves server edits', () => {
   const saved = { ...item.transaction, id: item.id, keterangan: 'Edited by partner', jumlah: 30000, tanggal: new Date(item.transaction.tanggal), createdAt: new Date(item.createdAt) };
   const result = mergeTransactionHistory([saved], [item]);

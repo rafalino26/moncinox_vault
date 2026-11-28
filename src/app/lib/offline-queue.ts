@@ -1,10 +1,14 @@
 import { parseTransactionDate } from './dates';
+import { assertAppWritable } from './app-update-gate';
 
 export type PendingInput = { jumlah: number; sumber: 'Saya' | 'Pacar_Saya'; tipe: 'pengeluaran' | 'tabungan'; tanggal: string; keterangan: string };
-export type QueuedTransaction = { id: string; transaction: PendingInput; createdAt: number; state: 'waiting' | 'blocked'; error?: string; attempted?: boolean; revision?: number };
+export type MutationKind = 'create' | 'update' | 'delete' | 'income-create' | 'income-delete';
+export type MutationTarget = { id: string; expected: PendingInput };
+export type QueuedTransaction = { id: string; transaction: PendingInput; createdAt: number; state: 'waiting' | 'blocked'; error?: string; attempted?: boolean; revision?: number;
+  kind?: MutationKind; target?: MutationTarget; targetKey?: string; rejected?: boolean };
 type Storage = { list(): Promise<QueuedTransaction[]>; add(item: QueuedTransaction): Promise<unknown>; put(item: QueuedTransaction): Promise<unknown>; remove(id: string): Promise<unknown>;
   change(id: string, update: (item: QueuedTransaction | undefined) => QueuedTransaction | null | undefined): Promise<QueuedTransaction | null | undefined> };
-type Delivery = { ok: boolean; retryable: boolean; error?: string };
+type Delivery = { ok: boolean; retryable: boolean; error?: string; rejected?: boolean };
 function normalizePending(input: unknown): PendingInput | null {
   if (!input || typeof input !== 'object') return null;
   const data = input as Partial<PendingInput>;
@@ -19,10 +23,12 @@ function validStored(item: QueuedTransaction) {
     Number.isFinite(item.createdAt) && item.createdAt > 0 && ['waiting', 'blocked'].includes(item.state) &&
     (item.attempted === undefined || typeof item.attempted === 'boolean') &&
     (item.revision === undefined || (Number.isSafeInteger(item.revision) && item.revision > 0)) &&
+    (item.kind === undefined || ['create', 'update', 'delete', 'income-create', 'income-delete'].includes(item.kind)) &&
+    (!['update', 'delete', 'income-delete'].includes(item.kind || '') || !!(item.target && typeof item.target.id === 'string' && normalizePending(item.target.expected))) &&
     (item.error === undefined || typeof item.error === 'string') && normalizePending(item.transaction) !== null;
 }
 
-export function createOfflineQueue(storage: Storage, send: (item: QueuedTransaction) => Promise<Delivery>, onDelivered: () => Promise<unknown>, online: () => boolean) {
+export function createOfflineQueue(storage: Storage, send: (item: QueuedTransaction) => Promise<Delivery>, onDelivered: (item: QueuedTransaction) => Promise<unknown>, online: () => boolean) {
   let snapshot = { items: [] as QueuedTransaction[], syncing: false, error: null as string | null, lastSynced: null as number | null };
   const serverSnapshot = snapshot;
   const listeners = new Set<() => void>();
@@ -58,11 +64,12 @@ export function createOfflineQueue(storage: Storage, send: (item: QueuedTransact
           catch { result = { ok: false, retryable: true, error: 'Koneksi terputus. Akan dicoba lagi dengan ID yang sama.' }; }
           if (result.ok) {
             // Refresh committed server state before dropping the durable local receipt candidate.
-            await onDelivered();
+            await onDelivered(item);
             await storage.remove(item.id);
             delivered = true;
           } else {
-            await storage.put({ ...item, state: result.retryable ? 'waiting' : 'blocked', error: result.error || 'Pengiriman belum berhasil.' });
+            await storage.put({ ...item, state: result.retryable ? 'waiting' : 'blocked', rejected: result.rejected === true, error: result.error || 'Pengiriman belum berhasil.' });
+            if (result.rejected) await onDelivered(item); // Refresh external changes without discarding the rejected local proposal.
             if (result.retryable) break;
           }
         }
@@ -82,7 +89,16 @@ export function createOfflineQueue(storage: Storage, send: (item: QueuedTransact
     getSnapshot: () => snapshot, getServerSnapshot: () => serverSnapshot,
     subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
     reload, sync,
+    async discardRejected(id: string) {
+      assertAppWritable();
+      await storage.change(id, item => {
+        if (!item || item.state !== 'blocked' || item.rejected !== true) throw Error('Pengiriman belum dipastikan ditolak server.');
+        return null;
+      });
+      await reload();
+    },
     async edit(id: string, input: PendingInput, expectedRevision: number) {
+      assertAppWritable();
       const transaction = normalizePending(input);
       if (!transaction) throw Error('Nominal, tanggal, atau keterangan tidak valid.');
       await storage.change(id, item => {
@@ -95,6 +111,7 @@ export function createOfflineQueue(storage: Storage, send: (item: QueuedTransact
       if (running) addedDuringSync = true;
     },
     async cancel(id: string, expectedRevision: number) {
+      assertAppWritable();
       await storage.change(id, item => {
         if (!item) throw Error('Catatan sudah tidak ada di antrean.');
         if (item.attempted !== false) throw Error('Catatan sudah mulai dikirim. Tunggu konfirmasi server sebelum membatalkan.');
@@ -108,11 +125,14 @@ export function createOfflineQueue(storage: Storage, send: (item: QueuedTransact
       if (item) await storage.put({ ...item, state: 'waiting', error: undefined });
       await sync();
     },
-    async enqueue(input: PendingInput) {
+    async enqueue(input: PendingInput, kind: MutationKind = 'create', target?: MutationTarget) {
+      assertAppWritable();
       const transaction = normalizePending(input);
       if (!transaction) throw Error('Nominal, tanggal, atau keterangan tidak valid. Periksa form.');
-      const item: QueuedTransaction = { id: crypto.randomUUID(), transaction, createdAt: Date.now(), state: 'waiting', attempted: false, revision: 1 };
-      // Resolve only after IDB transaction commits. No false offline-success on quota errors.
+      if (['update', 'delete', 'income-delete'].includes(kind) && (!target || !normalizePending(target.expected))) throw Error('Data awal catatan tidak valid.');
+      const item: QueuedTransaction = { id: crypto.randomUUID(), transaction, kind, ...(target ? { target: { id: target.id, expected: normalizePending(target.expected)! }, targetKey: `${kind === 'income-delete' ? 'income' : 'transaction'}:${target.id}` } : {}), createdAt: Date.now(), state: 'waiting', attempted: false, revision: 1 };
+      // Target mutations use a deterministic local key to prevent two offline proposals for one row.
+      // Delivery UUID stays independent, and is never changed after an attempt.
       await storage.add(item);
       if (running) addedDuringSync = true;
       await reload();

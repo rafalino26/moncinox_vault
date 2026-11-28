@@ -8,8 +8,9 @@ import { StitchFeedbackProvider, useStitchFeedback } from './StitchFeedback';
 import { createFinancePersistence } from '../../../public/offline-store';
 import { createOfflineQueue } from '../lib/offline-queue';
 import { queueStorage } from '../lib/offline-queue-storage';
-import { mergeTransactionHistory } from '../lib/transaction-history';
+import { mergeTransactionHistory, mergeIncomeHistory } from '../lib/transaction-history';
 import { usePathname } from 'next/navigation';
+import { isAppUpdating } from '../lib/app-update-gate';
 
 export type { WalletsState } from '../lib/wallet-state';
 
@@ -35,6 +36,11 @@ export function useTransactionHistory(transactions: Transaction[]) {
   const snapshot = useSyncExternalStore(queue.subscribe, queue.getSnapshot, queue.getServerSnapshot);
   return useMemo(() => mergeTransactionHistory(transactions, snapshot.items), [transactions, snapshot.items]);
 }
+export function useIncomeHistory(income: Pemasukan[]) {
+  const queue = useOfflineTransactions();
+  const snapshot = useSyncExternalStore(queue.subscribe, queue.getSnapshot, queue.getServerSnapshot);
+  return useMemo(() => mergeIncomeHistory(income, snapshot.items), [income, snapshot.items]);
+}
 
 export function HistoryQueueError() {
   const queue = useOfflineTransactions();
@@ -58,17 +64,18 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch('/api/web/offline-transactions', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: item.id, transaction: item.transaction }), signal: controller.signal,
+        body: JSON.stringify({ id: item.id, transaction: item.transaction, kind: item.kind, target: item.target }), signal: controller.signal,
       });
       const body = await response.json();
       // A redirected/proxy HTML response or malformed success must never acknowledge the queue.
       const ok = response.ok && body.id === item.id && [200, 201].includes(body.status);
-      return { ok, retryable: response.status !== 400 && response.status !== 409, error: body.error || 'Server belum mengonfirmasi pengiriman.' };
+      return { ok, retryable: response.status !== 400 && response.status !== 409, rejected: response.status === 409 && body.code === 'CONFLICT', error: body.error || 'Server belum mengonfirmasi pengiriman.' };
     } finally { clearTimeout(timeout); }
-  }, async () => {
-    await Promise.all([store.wallets.refreshAfterWrite(), store.transactions.refreshAfterWrite()]);
-    if (store.wallets.getSnapshot().error || store.transactions.getSnapshot().error) throw Error('Refresh belum berhasil');
-  }, () => navigator.onLine !== false));
+  }, async item => {
+    const history = item.kind?.startsWith('income') ? store.income : store.transactions;
+    await Promise.all([store.wallets.refreshAfterWrite(), history.refreshAfterWrite()]);
+    if (store.wallets.getSnapshot().error || history.getSnapshot().error) throw Error('Refresh belum berhasil');
+  }, () => navigator.onLine !== false && !isAppUpdating()));
   useEffect(() => {
     const retry = () => { if (document.visibilityState === 'visible') void queue.sync(); };
     let channel: BroadcastChannel | null = null;

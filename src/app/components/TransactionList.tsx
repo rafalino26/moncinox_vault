@@ -2,6 +2,7 @@ import type { HistoryTransaction } from '../lib/transaction-history';
 import Image from 'next/image';
 import { FiClock, FiTrendingDown, FiTrendingUp } from 'react-icons/fi';
 import QueuedTransactionActions from './QueuedTransactionActions';
+import { syncLabel } from '../lib/transaction-history';
 
 export default function TransactionList({ transactions }: { transactions: HistoryTransaction[] }) {
   return (
@@ -33,7 +34,7 @@ export default function TransactionList({ transactions }: { transactions: Histor
                 <p className="font-extrabold text-slate-900 text-sm sm:text-base break-words leading-tight">
                   {t.keterangan}
                 </p>
-                {t.syncState && <span className="history-sync-status">{t.syncState === 'blocked' ? 'Perlu diperiksa' : 'Belum tersinkron'}</span>}
+                {t.syncState && <span className="history-sync-status">{syncLabel(t)}</span>}
                 {t.syncState === 'blocked' && t.syncError && <p className="history-sync-error">{t.syncError}</p>}
                 {t.syncState && <QueuedTransactionActions transaction={t} />}
                 <p className="text-xs text-slate-400 font-medium truncate mt-1">

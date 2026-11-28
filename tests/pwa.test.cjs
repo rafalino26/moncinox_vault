@@ -112,3 +112,17 @@ test('preloaded chunks survive runtime eviction and image optimizer requests fal
   assert.equal(await (await sw.request('/_next/image?url=%2Frafa.png&w=64&q=75')).text(), 'precache:/rafa.png');
   assert.equal(sw.request('/_next/image?url=https%3A%2F%2Fother.test%2Fprivate.png'), undefined);
 });
+
+test('activation retains exactly one prior shell and its chunks for safe handover', async () => {
+  const sw = worker(async () => { throw Error('offline'); });
+  const oldest = await sw.caches.open('moncinox-pwa-shell-v3-oldest');
+  await oldest.put('/_next/static/oldest.js', new Response('oldest'));
+  const previous = await sw.caches.open('moncinox-pwa-shell-v3-previous');
+  await previous.put('/_next/static/previous.js', new Response('previous'));
+  await sw.caches.open('moncinox-pwa-assets-v3-previous');
+  await sw.lifecycle('install'); await sw.lifecycle('activate');
+  assert.equal(sw.stores.has('moncinox-pwa-shell-v3-oldest'), false);
+  assert.equal(sw.stores.has('moncinox-pwa-shell-v3-previous'), true);
+  assert.equal(sw.stores.has('moncinox-pwa-assets-v3-previous'), true);
+  assert.equal(await (await sw.request('/_next/static/previous.js')).text(), 'previous');
+});

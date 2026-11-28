@@ -9,7 +9,7 @@ export const periodLabels: Record<string, string> = {
 };
 
 // Reuse the same calendar boundaries and sorting for both kinds of history.
-export function filterIncome(rows: Pemasukan[], filters: TransactionFilters, now = new Date()) {
+export function filterIncome<T extends Pemasukan>(rows: T[], filters: TransactionFilters, now = new Date()) {
   const ids = new Set(filterTransactions(rows.map(row => ({
     ...row, tanggal: row.createdAt, tipe: 'pengeluaran' as const, keterangan: '',
   })), { ...filters, tipe: undefined }, now).map(row => row.id));

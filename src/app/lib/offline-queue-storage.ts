@@ -5,10 +5,14 @@ const STORE = 'transactions';
 
 async function access<T>(mode: IDBTransactionMode, operation: (store: IDBObjectStore, tx: IDBTransaction) => IDBRequest<T>): Promise<T> {
   const db = await new Promise<IDBDatabase>((resolve, reject) => {
-    const request = indexedDB.open(DB, 1);
+    const request = indexedDB.open(DB, 2);
     let expired = false;
     const timer = setTimeout(() => { expired = true; reject(Error('Penyimpanan antrean tidak merespons.')); }, 3000);
-    request.onupgradeneeded = () => request.result.createObjectStore(STORE, { keyPath: 'id' });
+    request.onupgradeneeded = () => {
+      const store = request.result.objectStoreNames.contains(STORE)
+        ? request.transaction!.objectStore(STORE) : request.result.createObjectStore(STORE, { keyPath: 'id' });
+      if (!store.indexNames.contains('targetKey')) store.createIndex('targetKey', 'targetKey', { unique: true });
+    };
     request.onblocked = request.onerror = () => { clearTimeout(timer); expired = true; reject(Error('Antrean belum bisa dibuka. Catatan belum disimpan.')); };
     request.onsuccess = () => {
       clearTimeout(timer);
@@ -29,7 +33,9 @@ async function access<T>(mode: IDBTransactionMode, operation: (store: IDBObjectS
         }
         resolve(request.result);
       };
-      tx.onerror = tx.onabort = () => reject(Error('Antrean gagal disimpan. Jangan tutup form; coba lagi.'));
+      tx.onerror = tx.onabort = () => reject(Error(tx.error?.name === 'ConstraintError'
+        ? 'Catatan ini sudah punya perubahan yang menunggu. Selesaikan atau batalkan perubahan itu dulu.'
+        : 'Antrean gagal disimpan. Jangan tutup form; coba lagi.'));
     });
   } finally { db.close(); }
 }

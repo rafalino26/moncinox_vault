@@ -4,9 +4,10 @@ import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import type { Pemasukan } from '@prisma/client';
-import { FiArrowDownLeft, FiBarChart2, FiList, FiPlus, FiTrash2 } from 'react-icons/fi';
-import { deletePemasukan } from '@/app/actions/transactionActions';
-import { useIncomeData, useWallet } from '@/app/components/WalletContext';
+import { FiArrowDownLeft, FiClock, FiBarChart2, FiList, FiPlus, FiTrash2 } from 'react-icons/fi';
+import { useIncomeData, useOfflineTransactions, useIncomeHistory, HistoryQueueError } from '@/app/components/WalletContext';
+import { incomeInput, syncLabel } from '@/app/lib/transaction-history';
+import QueuedTransactionActions from '@/app/components/QueuedTransactionActions';
 import ConfirmationModal from '@/app/components/ConfirmationModal';
 import AddUangSakuModal from '@/app/components/AddUangSakuModal';
 import DataStatus from '@/app/components/DataStatus';
@@ -22,7 +23,8 @@ const LedgerChart = dynamic(() => import('@/app/components/ledger/LedgerChart'),
 
 export default function PemasukanClientView() {
   const incomeData = useIncomeData();
-  const { removeSavedIncome } = useWallet();
+  const queue = useOfflineTransactions();
+  const history = useIncomeHistory(incomeData.data ?? []);
   const { filters, update } = useLedgerQuery();
   const view = useSearchParams().get('view') || 'tabel';
   const [query, setQuery] = useState('');
@@ -36,15 +38,14 @@ export default function PemasukanClientView() {
   const filtered = useMemo(() => filterIncome(incomeData.data ?? [], JSON.parse(filterKey)).filter(item =>
     !search || `uang saku ${personName(item.sumber)} ${calendarDateLabel(calendarDateKey(item.createdAt))} ${item.jumlah}`.toLowerCase().includes(search)), [incomeData.data, filterKey, search]);
   const entries = useMemo(() => incomeEntries(filtered), [filtered]);
+  const historyRows = useMemo(() => filterIncome(history, JSON.parse(filterKey)).filter(item =>
+    !search || `uang saku ${personName(item.sumber)} ${calendarDateLabel(calendarDateKey(item.createdAt))} ${item.jumlah}`.toLowerCase().includes(search)), [history, filterKey, search]);
   useEffect(() => { setVisibleCount(50); }, [filterKey, search]);
   const handleDelete = async () => {
     if (!itemToDelete) return;
     setMutationError(null);
-    try {
-      const result = await deletePemasukan(itemToDelete.id);
-      if (result.success) removeSavedIncome(itemToDelete.id, result.wallet);
-      else setMutationError(result.error ?? 'Gagal menghapus pemasukan.');
-    } catch { setMutationError('Gagal menghapus pemasukan. Silakan coba lagi.'); }
+    await queue.enqueue(incomeInput(itemToDelete), 'income-delete', { id: itemToDelete.id, expected: incomeInput(itemToDelete) });
+    void queue.sync();
     setItemToDelete(null);
   };
   if (incomeData.isLoading && !incomeData.error) return <StitchLoading centered />;
@@ -64,16 +65,18 @@ export default function PemasukanClientView() {
     <section className="ledger-sheet">
       <div className="ledger-view-tabs" aria-label="Tampilan pemasukan">{[{ value: 'tabel', label: 'Daftar', icon: FiList }, { value: 'grafik', label: 'Grafik', icon: FiBarChart2 }].map(item =>
         <button type="button" key={item.value} aria-pressed={view === item.value} onClick={() => update('view', item.value)}><item.icon aria-hidden="true" />{item.label}</button>)}</div>
-      {incomeData.data && (view === 'grafik' ? <LedgerChart entries={entries} income /> : <>
-        <div className="ledger-section-heading"><h2>Riwayat pemasukan</h2><span>{filtered.length} catatan</span></div>
-        {filtered.length ? <ul className="ledger-rows">{filtered.slice(0, visibleCount).map(item => <li key={item.id} className="ledger-row">
-          <div className="ledger-row-main"><span className="ledger-row-icon" aria-hidden="true"><FiArrowDownLeft /></span><div className="ledger-row-description"><h3>Uang saku {personName(item.sumber)}</h3><p>{calendarDateLabel(calendarDateKey(item.createdAt))}</p></div><strong className="ledger-amount">+{rupiah(item.jumlah)}</strong></div>
-          <div className="ledger-row-footer"><span className="ledger-tag">Pemasukan</span><div className="ledger-row-actions"><button type="button" aria-label={`Hapus pemasukan ${personName(item.sumber)} ${rupiah(item.jumlah)}`} onClick={() => setItemToDelete(item)}><FiTrash2 aria-hidden="true" />Hapus</button></div></div>
+      <HistoryQueueError />
+      {(incomeData.data || historyRows.length > 0) && (view === 'grafik' ? <LedgerChart entries={entries} income /> : <>
+        <div className="ledger-section-heading"><h2>Riwayat pemasukan</h2><span>{historyRows.length} catatan</span></div>
+        {historyRows.length ? <ul className="ledger-rows">{historyRows.slice(0, visibleCount).map(item => <li key={item.id} className={`ledger-row${item.syncState ? ' history-pending' : ''}`}>
+          <div className="ledger-row-main"><span className="ledger-row-icon" aria-hidden="true">{item.syncState ? <FiClock /> : <FiArrowDownLeft />}</span><div className="ledger-row-description"><h3>Uang saku {personName(item.sumber)}</h3><p>{calendarDateLabel(calendarDateKey(item.createdAt))}</p></div><strong className="ledger-amount">+{rupiah(item.jumlah)}</strong></div>
+          <div className="ledger-row-footer"><span className="ledger-tag">{item.syncState ? syncLabel(item) : 'Pemasukan'}</span>{item.syncState ? <QueuedTransactionActions transaction={{ ...item, tipe: 'pengeluaran', tanggal: item.createdAt, keterangan: 'Uang saku' }} /> : <div className="ledger-row-actions"><button type="button" aria-label={`Hapus pemasukan ${personName(item.sumber)} ${rupiah(item.jumlah)}`} onClick={() => setItemToDelete(item)}><FiTrash2 aria-hidden="true" />Hapus</button></div>}</div>
+          {item.syncState === 'blocked' && item.syncError && <p className="history-sync-error">{item.syncError}</p>}
         </li>)}</ul> : <p className="ledger-empty">Belum ada pemasukan untuk filter ini. Coba periode lain atau tambah uang saku baru.</p>}
-        {filtered.length > visibleCount && <button type="button" className="ledger-load-more" onClick={() => setVisibleCount(value => value + 50)}>Lihat lebih banyak · {visibleCount} dari {filtered.length}</button>}
+        {historyRows.length > visibleCount && <button type="button" className="ledger-load-more" onClick={() => setVisibleCount(value => value + 50)}>Lihat lebih banyak · {visibleCount} dari {historyRows.length}</button>}
       </>)}
     </section>
     {addPerson && <AddUangSakuModal person={addPerson} personName={personName(addPerson)} onClose={() => setAddPerson(null)} />}
-    {itemToDelete && <ConfirmationModal tone="violet" title="Hapus pemasukan?" message={`Hapus uang saku ${personName(itemToDelete.sumber)} sebesar ${rupiah(itemToDelete.jumlah)}? Saldo akan dikurangi.`} onConfirm={handleDelete} onCancel={() => setItemToDelete(null)} />}
+    {itemToDelete && <ConfirmationModal allowOffline tone="violet" title="Hapus pemasukan?" message={`Hapus uang saku ${personName(itemToDelete.sumber)} sebesar ${rupiah(itemToDelete.jumlah)}?`} onConfirm={handleDelete} onCancel={() => setItemToDelete(null)} />}
   </div>;
 }

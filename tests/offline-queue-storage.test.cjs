@@ -70,3 +70,21 @@ test('atomic draft changes write/delete only after the guard succeeds and preser
     }
   }
 });
+
+test('outbox v2 upgrades an existing store in place with a unique target index', async () => {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'indexedDB');
+  let indexed = false;
+  try {
+    Object.defineProperty(globalThis, 'indexedDB', { configurable: true, value: { open(_name, version) {
+      assert.equal(version, 2);
+      const store = { indexNames: { contains: () => false }, createIndex(name, key, options) { assert.equal(name, 'targetKey'); assert.equal(key, 'targetKey'); assert.equal(options.unique, true); indexed = true; } };
+      const db = { objectStoreNames: { contains: () => true }, close() {},
+        createObjectStore() { assert.fail('must preserve existing drafts'); },
+        transaction() { const tx = { objectStore() { return { getAll() { const result = { result: [] }; setImmediate(() => tx.oncomplete()); return result; } }; } }; return tx; } };
+      const request = { result: db, transaction: { objectStore: () => store } };
+      setImmediate(() => { request.onupgradeneeded(); request.onsuccess(); }); return request;
+    } } });
+    const { queueStorage } = loadModule('src/app/lib/offline-queue-storage.ts');
+    assert.deepEqual(await queueStorage.list(), []); assert.equal(indexed, true);
+  } finally { if (descriptor) Object.defineProperty(globalThis, 'indexedDB', descriptor); else delete globalThis.indexedDB; }
+});

@@ -174,3 +174,36 @@ test('legacy queued records without an attempt flag are conservatively locked bu
   await assert.rejects(queue.edit(id, input, 1), /mulai dikirim/);
   await queue.sync(); assert.equal(disk.items.size, 0);
 });
+
+test('target mutation retains its original expected snapshot across local edits and retries', async () => {
+  const disk = storage(); const attempts = [];
+  const queue = createOfflineQueue(disk, async item => { attempts.push(structuredClone(item)); return { ok: false, retryable: true }; }, async () => {}, () => true);
+  const original = { ...input, jumlah: 10000 };
+  const item = await queue.enqueue(input, 'update', { id: 'server-row', expected: original });
+  await queue.edit(item.id, { ...input, jumlah: 50000 }, 1);
+  await queue.sync(); await queue.sync();
+  assert.deepEqual(attempts[0].target.expected, { ...original, tanggal: '2026-11-25T00:00:00.000Z' });
+  assert.equal(attempts[0].transaction.jumlah, 50000);
+  assert.equal(attempts[0].id, attempts[1].id);
+});
+
+test('definitive conflict remains visible until explicitly discarded; ambiguous failures cannot be discarded', async () => {
+  const disk = storage(); const queue = createOfflineQueue(disk, async () => ({ ok: false, retryable: false, rejected: true, error: 'Partner changed it' }), async () => {}, () => true);
+  const item = await queue.enqueue(input, 'delete', { id: 'target', expected: input });
+  await assert.rejects(queue.discardRejected(item.id), /belum dipastikan/);
+  await queue.sync(); assert.equal(queue.getSnapshot().items[0].rejected, true);
+  await queue.discardRejected(item.id); assert.equal(disk.items.size, 0);
+});
+
+test('transaction and income operations retain kind, target and fixed delivery ID through offline restore', async () => {
+  for (const kind of ['update', 'delete', 'income-create', 'income-delete']) {
+    const disk = storage(); const sent = [];
+    const queue = createOfflineQueue(disk, async () => assert.fail('offline'), async () => {}, () => false);
+    const target = kind === 'income-create' ? undefined : { id: `target-${kind}`, expected: input };
+    const saved = await queue.enqueue(input, kind, target);
+    const reopened = createOfflineQueue(disk, async item => { sent.push(item); return { ok: true }; }, async () => {}, () => true);
+    await reopened.sync();
+    assert.equal(sent[0].kind, kind); assert.equal(sent[0].id, saved.id);
+    assert.equal(sent[0].target?.id, target?.id); assert.equal(disk.items.size, 0);
+  }
+});
